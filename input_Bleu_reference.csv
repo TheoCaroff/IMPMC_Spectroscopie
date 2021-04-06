@@ -1,0 +1,6 @@
+Nom_fichier;Legende;Chemin_reférence;Correction;Option matplot;Marqueur CIE;Epaisseur_mm;Concentration_massique (%wt);Taux_redox(Fe2+/Fe_tot)
+#Correction : 1 pour soustraire la référence (METTRE CHEMIN); 2 la bande UV; 3 lissage; 4 suppression saut; 5 passe en TR;;;;
+./Data_trait/Bleu_1006U_TransmisionVIS_01.csv;Bleu_1006U_VIS;./Data_trait/Bleu_1006U_TransmissionNIR_01.csv;6;-C1;;-1;-1;-1
+./Data_trait/Bleu_1295XX_TransmisionVIS_01.csv;Bleu_1295XX_VIS;./Data_trait/Bleu_1295XX_TransmissionNIR_02.csv;6;-C2;;-1;-1;-1
+./Data_trait/Bleu_3232XH_TransmisionVIS_02.csv;Bleu_3232XH_VIS;./Data_trait/Bleu_3232XH_TransmissionNIR_01.csv;6;-C3;;-1;-1;-1
+./Data_trait/Bleu_3311XX_TransmisionVIS_01.csv;Bleu_3311XX_VIS;./Data_trait/Bleu_3311XX_TransmissionNIR_02.csv;6;-C4;;-1;-1;-1

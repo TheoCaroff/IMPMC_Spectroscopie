@@ -359,7 +359,9 @@ def reconstruction_saut(X_IR, Y_IRDelta, X_VIS, Y_VIS, interpo_limIR, interpo_li
 
     Forme = int(input('Selectionner la methode d\'interpolation\n 1 pour un ajustement polynomiale\n')
                         or Forme)
-    
+    FIGsize=(10,6)
+    DPI=120
+
     while (Forme_OK == 0): # Partie ou on selectionne l'interpolation
         if (Forme == 1): # si jamais besoin de mettre une boucle
 
@@ -384,7 +386,7 @@ def reconstruction_saut(X_IR, Y_IRDelta, X_VIS, Y_VIS, interpo_limIR, interpo_li
             print("Correction non implémentée\n")
             break
         
-        plt.figure(figsize=(5,3), dpi=120)
+        plt.figure(figsize=FIGsize, dpi=DPI)
         plt.plot(X, Y, label= NOM + 'Original')
         plt.plot(X_IR, Y_IRDelta, '-', label='1ere parti remonté')
         plt.plot(X_VIS, Y_VIS, '-', label='2eme parti')
@@ -482,7 +484,8 @@ def correction_saut_detect(X, Y, NOM):
         
         
         
-        plt.figure(figsize=(5,3), dpi=120)
+        plt.figure(figsize=FIGsize, dpi=DPI)
+
         plt.plot(X, Y, label= NOM + 'Original')
         plt.plot(X, Ycorr, label = NOM +'reconstruite')
         plt.xlim([Xmin, Xmax])
@@ -499,6 +502,11 @@ def correction_saut_detect(X, Y, NOM):
 
 def Recollage_IR_VIS(X_IR, Y_IRDelta, X_VIS, Y_VIS, interpo_limIR, interpo_limVIS, NOM):
     Recol_OK=False;
+    
+    FIGsize=(10,6)
+    DPI=120
+
+
     #plt.ion() #Nécéssaire pour afficher les figures en %matplolib  
     while not Recol_OK:
 
@@ -533,7 +541,7 @@ def Recollage_IR_VIS(X_IR, Y_IRDelta, X_VIS, Y_VIS, interpo_limIR, interpo_limVI
             Xcorr=np.concatenate([X_IR[INDEX_IR], Xtemp, X_VIS[INDEX_VIS]])
             Ycorr=np.concatenate([Y_IRDelta[INDEX_IR], Ytemp ,Y_VIS[INDEX_VIS]])
         
-        plt.figure(figsize=(5,3), dpi=120)
+        plt.figure(figsize=FIGsize, dpi=DPI)
         plt.plot(Xcorr,Ycorr, label='Spectre joint')
         plt.grid()
         plt.legend()

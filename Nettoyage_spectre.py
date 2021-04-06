@@ -225,7 +225,7 @@ def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet
     
     FIGsize=(10,6)
     DPI=120
-    
+
     plt.plot(X, Y, label=NOM)
     plt.xlim([Xmin, Xmax])
     plt.grid()
@@ -430,7 +430,9 @@ def correction_saut_detect(X, Y, NOM):
     
     sep_OK = False;
     #plt.ion() #Nécéssaire pour afficher les figures en %matplolib  
-    
+    FIGsize=(10,6)
+    DPI=120
+
     while True :
         while True : # Partie ou on suprimer le saut de decteur
             RES=X<(Xdebcoup) # On sépare les data  au dessus de Xdebcoup
@@ -448,7 +450,7 @@ def correction_saut_detect(X, Y, NOM):
             
             sep_OK = True;
             
-            plt.figure(figsize=(5,3), dpi=120)
+            plt.figure(figsize=FIGsize, dpi=DPI)
             plt.plot(X, Y, label='Original')
             plt.plot(XR1, YR1, '-', label='1ere parti')
             plt.plot(XR2, YR2, '-', label='2eme parti')
@@ -728,7 +730,7 @@ def Corr2Str(Correction_number):
        
     elif Correction_number == 4:
        Correction_NAME = '_cor_I100_filtre_saut_filtre.csv'
-    
+       Correction_NAME = '_cor_I100_saut.csv'
     elif Correction_number == 5:
        Correction_NAME = '_Tr.csv'
     
@@ -829,9 +831,9 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Addition_Tr=0):
                 I100 = -np.log10(DataREF[:, 1])
             
                 Y_corr=Y-I100;
-                Y_corr= filtrage_gauss(X, Y_corr, Legende[i])
+                #Y_corr= filtrage_gauss(X, Y_corr, Legende[i])
                 Y_corr= correction_saut_detect(X, Y_corr, Legende[i])
-                Y_corr= filtrage_gauss(X, Y_corr, Legende[i] + 'corr', 2)
+                #Y_corr= filtrage_gauss(X, Y_corr, Legende[i] + 'corr', 2)
                 Fichier_corr=nomfichier[0:-4] + Corr2Str(4)
             
             elif(correction[i]==5): # passe en Tr

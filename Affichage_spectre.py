@@ -14,11 +14,114 @@ from scipy import interpolate
 from colour import plotting as cplot
 import math
 
-def Affichage_abs(Liste, Legende, Autoaxe=True, nbonde_min=4000, nbonde_max=35000, Amin=0,
-                  Amax=1.5, SecondAxe=True, TITRE='superposition', AdditionTr=0,
-                  linewidth=1.5, ABScm=True, modecouleurs='auto', optionplot=''):
+
+def Readspectre(Fichier, skip_header=2, delimiter=';'):
+    '''
+    Cette fonction lis un CSV dont le chemin est renseigné dans la variable Fichier,
+    il renvoit un valeur X correpsondant à la première colonne (0) et Y correspondant à la deuxième (1)
+
+    Parameters
+    ----------
+    Fichier : string
+        Chemin vers le fichier à lire.
+
+    Returns
+    -------
+    None.
+
     '''
     
+    try:
+        Data = np.genfromtxt(Fichier, skip_header=skip_header, delimiter=delimiter); 
+    except UnicodeDecodeError:
+        Data = np.genfromtxt(Fichier, skip_header=skip_header, delimiter=delimiter, encoding='latin-1'); # si jamais l'encodage n'est pas UTF8
+    
+    X = Data[:, 0]
+    Y = Data[:, 1]
+    return([X, Y])
+
+def mono2tab(Value, size):
+    '''
+    Cette fonction sert à générer un tableau de la taille size, à partir d'un valeur
+
+    Parameters
+    ----------
+    Value : TYPE
+        DESCRIPTION.
+    size : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+        Liste de taille size avec Value dans chaque case.
+
+    '''
+    if (np.size(Value) == 1): # Si pas d'argument un marqueur unique pour toute les données
+        Value_ref = Value
+        Value = []
+        for i in np.arange(0, size):
+            Value.append(Value_ref)
+    return(Value)
+
+def set_graph(FIGSIZE=[12, 6], DPI = 120, grid=True):
+    '''
+    Paramètre la figure qui va servir à afficher les spectres
+
+    Parameters
+    ----------
+    FIGSIZE : TYPE, optional
+        DESCRIPTION. The default is [12, 6].
+    DPI : TYPE, optional
+        DESCRIPTION. The default is 120.
+    grid : TYPE, optional
+        DESCRIPTION. The default is True.
+
+    Returns
+    -------
+    None.
+
+    '''
+    plt.style.use({'figure.figsize': FIGSIZE, 'figure.dpi': DPI})
+#   plt.figure(figsize=(FIGSIZE), dpi=DPI)
+    plt.grid(grid);
+    plt.subplots_adjust(left=0.05, bottom=0.1, right=0.95, top=0.9, wspace=0.1, hspace=0.1)
+
+
+def Sav_fig(Titre='Pouet', Repertoire='Graph', cplot=False):
+    '''
+    Cette fonction permet de sauvegarer un graph matplotlib puis l'affiche'
+
+    Parameters
+    ----------
+    Titre : TYPE, optional
+        Titre du graph. The default is 'Pouet'.
+    Repertoire : TYPE, optional
+        Repertoire dans lequel les figures vont être sauvergarder. The default is 'Graph'.
+    cplot : TYPE, optional
+        si utilisé pour le module color science. The default is False.
+
+    Returns
+    -------
+    None.
+
+    '''
+    try:
+        os.mkdir(Repertoire)
+    except OSError:
+        pass
+    
+    plt.savefig(Repertoire+os.sep+Titre, bbox_inches='tight')
+
+    if cplot:
+        cplot.render(standalone=True)
+    else:
+        plt.show()
+        
+def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5],
+                  SecondAxe=True, TITRE='superposition', AdditionTr=0,
+                  linewidth=1.5, valeurnorm=1, Modeaff='ABScm', modecouleurs='auto', optionplot='',
+                  SHOW=True):
+    '''
     Cette fonction affiche des spectes optique obtenu en %T en absorbance et
     sauvegarde le graph dans un dossier graph placé dans le repertoire courant
     Parameters
@@ -30,80 +133,92 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, nbonde_min=4000, nbonde_max=3500
         Legende des fichiers.
     Autoaxe : bool
         Pour rélger les axes manuellement ou automatiquement
-    nbonde_min : float
-        borne basse de l'affichage des X
-    nbonde_max : float
-        borne haute de l'affichage des X
-    Amin : float
-        borne basse de l'affichage des Y.
-    Amax : float
-         borne haute de l'affichage des Y..
+    Xlim : TYPE, optional
+        DESCRIPTION. The default is [4000, 35000].
+    Ylim : TYPE, optional
+        DESCRIPTION. The default is [0, 1.5].
     SecondAxe : bool
         True si deuxième axe en nm.
     TITRE : TYPE, optional
         DESCRIPTION. The default is 'superposition'.
     AdditionTr: float
         Correction de transmitance
-    ABScm : bool
-        Choisir de plot en absorbance/nombre d'onde ou transmittance/nm
     linewidth : TYPE, optional
         DESCRIPTION. The default is 1.5.
+    valeurnorm: float, optional
+        Valeur qui sert à normaliser l'ABS dans les modes ABSnormep et Epsilon
+    Modeaff : TYPE, optional
+        Choix du mode, entre ABScm, Transmittance, reflectance, ABSnormep (normalisation épaisseur),
+        Epsilon. The default is 'ABScm'.
     modecouleurs : string, optional
         Permet de choisir le mode d'affichage des couleurs (trois mode existe :
             'auto', bigdata', 'manuel'. The default is 'auto'.
     optionplot : string, optional
         Choix des options des matplolib à utiliser en mode manuel
-
+    SHOW : Bool, optional
+        Pour afficher et sauvergarder la figure. The default is True.
     Returns
     -------
     None.
 
     '''
-
-    plt.figure(figsize=([12,6]), dpi=120)
-    #plt.figure(figsize=(10,6), dpi=140)
-    plt.subplots_adjust(left=0.05, bottom=0.1, right=0.9, top=0.9, wspace=0.1, hspace=0.1)
+    
+    Liste=mono2tab(Liste, np.size(Liste))
+    Legende=mono2tab(Legende, np.size(Liste))
+    optionplot=mono2tab(optionplot, np.size(Liste))
+    AdditionTr=mono2tab(AdditionTr, np.size(Liste))
+    valeurnorm=mono2tab(valeurnorm, np.size(Liste))
+    
+    set_graph() # Cf fonction, on créer la figure à la bonne taille/résolution
 
     colorsbigdata = plt.cm.nipy_spectral(np.linspace(0,1,np.size(Liste))) # On fixe la gamme de couleur utilisé
 
-    plt.grid(True);
-    #plt.xlabel("Wavenumber ($cm^{-1}$)");
-    #plt.ylabel('Absorbance [log(%T)]');
 
-    #plt.ylabel('Absorbance [log(%T)]')
-
-    if (np.size(optionplot) == 1): # Si pas d'argument un marqueur unique pour toute les données
-        optionplot_ref = optionplot
-        optionplot=[]
-        for i in np.arange(0, np.size(Liste)):
-            optionplot.append(optionplot_ref)
 
     if Autoaxe:
         pass
     else:
-        plt.xlim(nbonde_min, nbonde_max);
-        plt.ylim(Amin, Amax);
+        plt.xlim(Xlim);
+        plt.ylim(Ylim);
     
-    if not ABScm : TITRE = TITRE + 'Tr'
-    
-    i=0;
-    for Fichier in Liste: # on lit tous les fichier  
-        try:
-            Data = np.genfromtxt(Fichier, skip_header=2, delimiter=';'); # On récupère l'intensité de la référence
-        except UnicodeDecodeError:
-            Data = np.genfromtxt(Fichier, skip_header=2, delimiter=';', encoding='latin-1'); # On récupère l'intensité de la référence
-         
-        if ABScm:
-            X = 1/(Data[:, 0]*1E-7);
-            Y = -np.log10(Data[:, 1]+AdditionTr);
+
+    for i in np.arange(0, np.size(Liste)): # on lit tous les fichier  
+        Fichier = Liste[i];
+        
+        Xnm, Ytr = Readspectre(Fichier)
+        Ytr= Ytr + AdditionTr[i]
+        
+        if Modeaff == 'ABScm':
+            X = 1/(Xnm*1E-7);
+            Y = -np.log10(Ytr);
             plt.xlabel("Nombre d'onde ($cm^{-1}$)");
             plt.ylabel('Absorbance') 
-        else:
-            X = Data[:, 0];
-            Y = Data[:, 1];
-            plt.xlabel("Longueur d'onde ($nm$)");
-            plt.ylabel('Transmitance (%)') 
         
+        elif Modeaff == 'Reflectance':
+            X = 1/(Xnm*1E-7);
+            Y = 1-Ytr;
+            plt.xlabel("Nombre d'onde ($cm^{-1}$)");
+            plt.ylabel('Reflectance')
+       
+        elif Modeaff == 'ABSnormep':
+            X = 1/(Xnm*1E-7);
+            Y = -np.log10(Ytr)/valeurnorm[i];
+            plt.xlabel("Nombre d'onde ($cm^{-1}$)");
+            plt.ylabel('Absorbance normalisée ($cm^{-1}$)') 
+        
+        elif Modeaff == 'Epsilon':
+            X = 1/(Xnm*1E-7);
+            Y = -np.log10(Ytr)/valeurnorm[i];
+            plt.xlabel("Nombre d'onde ($cm^{-1}$)");
+            plt.ylabel('$\\varepsilon (L.mol^{-1}.cm^{-1})$') 
+            
+        else:
+            X = Xnm;
+            Y = Ytr;
+            plt.xlabel("Longueur d'onde ($nm$)");
+            plt.ylabel('Transmittance (%)') 
+            TITRE = TITRE + 'Tr'
+
         if modecouleurs == 'auto':
             plt.plot(X, Y, linewidth=linewidth)
         
@@ -115,8 +230,6 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, nbonde_min=4000, nbonde_max=3500
                 plt.plot(X, Y, linewidth=linewidth)
             else:
                 plt.plot(X, Y, optionplot[i], linewidth=linewidth)
-        
-        i=i+1;
             
     #plt.legend(Legende, loc="upper left");
     #plt.legend(Legende, bbox_to_anchor = [0.5, 0.2])
@@ -125,7 +238,7 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, nbonde_min=4000, nbonde_max=3500
     ax1=plt.gca()
     fig=plt.gcf()   
         
-    if SecondAxe and ABScm: # Parti double échelle mettre false pour avoir uniquement en cm^-1
+    if SecondAxe and (Modeaff == 'ABScm') : # Parti double échelle mettre false pour avoir uniquement en cm^-1
         fig.canvas.draw()
         ax2 = ax1.twiny()
         axmin, axmax = ax1.get_xlim()
@@ -143,135 +256,27 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, nbonde_min=4000, nbonde_max=3500
         #ax2.set_xlabel('Wavelenght (in nm)');
         ax2.set_xlabel('Longueur d\'onde (nm)');
     
-   
-    try:
-        os.mkdir('Graph')
-    except OSError:
-        pass
-    plt.savefig('Graph'+os.sep+TITRE, bbox_inches='tight')
-    plt.show()
+    if SHOW : Sav_fig(TITRE)
 
-def Affichage_epsi(nbonde_min, nbonde_max, epsimin, epsimax, SecondAxe, Liste,
-                   Legende, I100, concentration, Epaisseur, Element):
-    '''
-
-      nbonde_min : float
-        borne basse de l'affichage des X
-    nbonde_max : float
-        borne haute de l'affichage des X
-    Amin : float
-        borne basse de l'affichage des Y.
-    Amax : float
-         borne haute de l'affichage des Y.
-    SecondAxe : bool
-        True si deuxième axe en nm.
-    Liste : Tableau de string
-        Contient le nom des fichier à afficher.
-    Legende : Tableau de string
-        Legende des fichiers.
-    I100 : float
-        signal blanc de référence.
-    concentration : tableau de float
-        concentration de l'élément pour appliquer Beer-Lambert.
-    Epaisseur : tableau de float
-        Pour appliquer Beer-Lambert.
-    Element : string
-        Nom de l'élement étudié.
-
-    Returns
-    -------
-    None.
-
-    '''
-    
-    plt.figure(figsize=(5,3), dpi=120)
-    #plt.figure(figsize=(10,6), dpi=140)
-    plt.subplots_adjust(left=0.05, bottom=0.1, right=0.9, top=0.9, wspace=0.1, hspace=0.1)
-    
-    i=0;
-
-    plt.grid(True);
-    plt.xlabel("Nombre d'onde ($cm^{-1}$)");
-    plt.ylabel('$\\varepsilon$ ($L.mol^{-1}.cm^{-1})$');
-    plt.title(Element+'\n\n')
-    plt.xlim(nbonde_min, nbonde_max);
-    plt.ylim(epsimin, epsimax);
-    
-    for Fichier in Liste: # on lit tous les fichier       
-        try:
-            Data = np.genfromtxt(Fichier, skip_header=2, delimiter=';'); # On récupère l'intensité de la référence
-        except UnicodeDecodeError:
-            Data = np.genfromtxt(Fichier, skip_header=2, delimiter=';', encoding='latin-1'); # On récupère l'intensité de la référence
-         
-        X = 1/(Data[:, 0]*1E-7); # 
-        #Y  = (Data[:, 1]); #Si data en ABS
-        Y = -np.log10(Data[:, 1]); #Si data en %Tx
-        
-        Y=Y-I100;
-        Y=Y/(concentration[i]*Epaisseur[i])
-        
-        #plt.plot(X, Y, color='tab:orange'); # On trace le nombre d'onde versus le coef d'extenction
-        plt.plot(X, Y); # On trace le nombre d'onde versus le coef d'extenction
-        i=i+1;
-            
-    plt.legend(Legende);
-    ax1=plt.gca()
-    fig=plt.gcf()
-    
-        
-    if SecondAxe: # Parti double échelle mettre false pour avoir uniquement en cm^-1
-    
-        fig.canvas.draw()
-        ax2 = ax1.twiny()
-        axmin, axmax = ax1.get_xlim()
-        ax2.set_xlim(axmin, axmax)
-    
-        # Calculate Major Ticks
-        ax2_labels = []
-        #♦ax2_labels.append(float('inf')) #créaction de la première tique manuelle sinon ça merde, division par 0
-        ax2_labels.append(1/nbonde_min*1E7)
-        for item in ax1.get_xticklabels()[1:]:
-            l = 1/float(item.get_text())*1E7
-            l = "{:3.0f}".format(l)
-            ax2_labels.append(l)
-        ax2.set_xticklabels(ax2_labels)
-        ax2.set_xlabel('Longueur d\'onde (nm)');
-     
-    try:
-        os.mkdir('Graph')
-    except OSError:
-        pass
-    plt.savefig('Graph'+os.sep+'epsilon' + Element + '.png', bbox_inches='tight')
-    
-    plt.show()
     
 def Calcul_XYZ(Liste, Legende):
     '''
-    
     Parameters
     ----------
     Liste : chemin vers les fichier contenant les datas
         DESCRIPTION.
-
     Returns
     -------
     XYZ : tableau des XYZ correspondant à la liste d'entrée.
-
     '''
     XYZ=np.ones((np.size(Liste), 3))
     for i in np.arange(0, np.size(Liste)):
         Fichier=Liste[i]
-        try:
-             Data = np.genfromtxt(Fichier, skip_header=2, delimiter=';');
-        except UnicodeDecodeError:
-            Data = np.genfromtxt(Fichier, skip_header=2, delimiter=';', encoding='latin-1'); 
+
+        Xnm, Ytr = Readspectre(Fichier)
+        nm=np.arange(int(np.min(Xnm))+1 , int(np.max(Xnm))-1) # Création des valeur en nm à interpoler (pas de 1, 5, 10 ou 20 nm)
         
-        nm=np.arange(int(Data[0,0])+1,int(Data[-1,0])-1) # Création des valeur en nm à interpoler (pas de 1, 5, 10 ou 20 nm)
-
-        if np.size(nm) == 0:
-            nm=np.arange(int(Data[-1,0])+1,int(Data[0,0])-1)
-
-        fsample = interpolate.interp1d(Data[:, 0], Data[:, 1]) # On interpole le fichier pour avoir des valeur espacée de 1nm  (norme CIE)
+        fsample = interpolate.interp1d(Xnm, Ytr) # On interpole le fichier pour avoir des valeur espacée de 1nm  (norme CIE)
         Tsample = np.nan_to_num(fsample(nm));
         
         Data_dict={}
@@ -309,25 +314,20 @@ def AffichageCIE1931(Liste, Legende, TITRE='CIE1931', Marqueur='', Fleche=True,
     None.
 
     '''
-    plt.style.use({'figure.figsize': (6, 3), 'figure.dpi': 150})
+    FIGSIZE = (6, 3)
+    DPI = 150
+    
+    plt.style.use({'figure.figsize': FIGSIZE, 'figure.dpi': DPI})
     xtable=[]
     ytable=[]
-    try:
-        os.mkdir('Graph')
-    except OSError:
-        pass
+
     
     if TITRE == 'CIE1931':
         pass
     else:
         TITRE = TITRE + '_CIE1931'
     
-
-    if (np.size(Marqueur) == 1): # Si pas d'argument un marqueur unique pour toute les données
-        refmark=Marqueur
-        Marqueur=[]
-        for i in np.arange(0, np.size(Liste)):
-            Marqueur.append(refmark)
+    Marqueur=mono2tab(Marqueur, np.size(Liste))    
 
     # Plotting the *CIE 1931 Chromaticity Diagram*.
     # The argument *standalone=False* is passed so that the plot doesn't get
@@ -358,46 +358,104 @@ def AffichageCIE1931(Liste, Legende, TITRE='CIE1931', Marqueur='', Fleche=True,
                             textcoords='offset points',
                             arrowprops=dict(arrowstyle='->', connectionstyle='arc3, rad=-0.2'))
             
-        # elif not RGBValueerror:
-        #         plt.plot(x, y, 'x-', color=1-RGB, label=Legende[i])
         else :
                 plt.plot(x, y, 'x-', label=Legende[i])
         
     plt.legend()
-    
-    plt.savefig('Graph'+os.sep+TITRE, bbox_inches='tight')
 
-    # Displaying the plot.
-    if show:
-        cplot.render(standalone=True);
-
+    if show: Sav_fig(TITRE, cplot=True)
     
     return(xtable, ytable)
 
 
 
-def plt_BeerLambert_xy(Fichier, Legende, optionplot='', show='True'):
+def plt_BeerLambert_xy(Fichier, Legende, optionplot='', show='True', TITRE='CIE1931'):
+    '''
+    
 
-    # if (np.size(optionplot) == 1): # Si pas d'argument un marqueur unique pour toute les données
-    #     optionplot_ref = optionplot
-    #     optionplot=[]
-    #     for i in np.arange(0, np.size(Liste)):
-    #         optionplot.append(optionplot_ref)
+    Parameters
+    ----------
+    Fichier : string
+        Chemin vers le data à afficher.
+    Legende : TYPE
+        DESCRIPTION.
+    optionplot : TYPE, optional
+        DESCRIPTION. The default is ''.
+    show : TYPE, optional
+        DESCRIPTION. The default is 'True'.
+    TITRE : TYPE, optional
+        DESCRIPTION. The default is 'CIE1931'.
 
+    Returns
+    -------
+    None.
 
-    try:
-        Data = np.genfromtxt(Fichier, skip_header=2, delimiter=';');
-    except UnicodeDecodeError:
-        Data = np.genfromtxt(Fichier, skip_header=2, delimiter=';', encoding='latin-1');
-    x=Data[:, 0]
-    y=Data[:, 1]
+    '''
+    
+    if TITRE == 'CIE1931':
+        pass
+    else:
+        TITRE = TITRE + '_CIE1931'
+
+    x, y = Readspectre(Fichier)
     
     if optionplot == '':
         plt.plot(x,y, '--', label=Legende)
     else:
         plt.plot(x,y, optionplot, label=Legende)
+    
     plt.legend()
     
-    if show : cplot.render(standalone=True);
+    if show : Sav_fig();
+
+def Affichage_Lab(Liste, Legende, TITRE='Lab', Marqueur='', SHOW='True'):
+    
+    FIGSIZE=(5,5)
+    DPI=120
+    Marqueur=mono2tab(Marqueur, np.size(Liste))    
+
+    tristimulus=Calcul_XYZ(Liste, Legende)
+    
+    if TITRE == 'Lab':
+        pass
+    else:
+        TITRE = TITRE + '_Lab'
 
 
+    plt.style.use({'figure.figsize': FIGSIZE, 'figure.dpi': DPI})
+    fig, axs = plt.subplots(2, 1, sharex=True)
+    fig.subplots_adjust(left=0.15, bottom=0.1, right=0.99, top=0.99, wspace=0, hspace=0)
+    ax1 = axs[0]
+    ax2 = axs[1]
+    Lab_liste=[]
+    
+    for i in np.arange(0, np.size(Liste)):
+        XYZ=tristimulus[i]
+        
+        Lab=colour.XYZ_to_Lab(XYZ);
+        Lab_liste.append(Lab)
+        
+        if Marqueur[i]:
+            ax1.plot(Lab[1], Lab[0],'', marker=Marqueur[i], label=Legende[i])
+            ax2.plot(Lab[1], Lab[2], '', marker=Marqueur[i], label=Legende[i])
+        else:
+            ax1.plot(Lab[1], Lab[0], 'x', label=Legende[i])
+            ax2.plot(Lab[1], Lab[2], 'x', label=Legende[i])
+            
+    ax1.set_ylabel('L')
+    ax1.grid()
+    ax1.legend()
+    
+    ax2.set_ylabel('b')
+    ax2.set_xlabel('a')
+    ax2.grid()
+ 
+    #fig.tight_layout()
+    if SHOW : Sav_fig(TITRE)
+    return(Lab_liste)
+        
+        
+        
+        
+        
+        

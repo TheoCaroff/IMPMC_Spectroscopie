@@ -13,8 +13,23 @@ from scipy.ndimage import gaussian_filter1d
 from scipy import interpolate
 from IPython import display
 
+from Affichage_spectre import Readspectre
 
-def fit_intervalence(X, Y, NOM): 
+def show_interactif_loop():
+    '''
+    équivalent de plt.show()
+    Sensé permettre l'affichage à la matlab dans une boucle
+
+    Returns
+    -------
+    None.
+
+    '''
+    # display.clear_output(wait=True)
+    # display.display(plt.gcf())
+    plt.show(block=True)
+      
+def fit_OMCT(X, Y, NOM): 
     '''
     Cette fonction sert à fiter un Gausienne
     Dans le cas d'un transfert de charge O-élément d.
@@ -95,14 +110,10 @@ def fit_intervalence(X, Y, NOM):
             plt.ylim(-0.1, 1)
             plt.legend();
             plt.grid();
-            display.clear_output(wait=True)
-            display.display(plt.gcf())
-            plt.show(block=True)
+            show_interactif_loop()
                 
         except RuntimeError:
-            display.clear_output(wait=True)
-            display.display(plt.gcf())
-            plt.show(block=True)
+            show_interactif_loop()
                 
             print('\nCurve fit n\'a vraisemblablement pas convergé\n'.format(RuntimeError));
             print('Essayer de changer les paramètres du fit\n')
@@ -129,7 +140,6 @@ def fit_intervalence(X, Y, NOM):
     #return(Y_corr-Y_min) # On récupère la valeur minmum pour bien assoir la ligne de base 
     #! pas de sens physique, valeur de correction de reflexion à mesure
     return(Y_corr) #On retourne le spectre corrigé
-    #return(Y_corr-(0.0519-0.022)) # Uniquement pour les verre de Vincent
 
 def filtrage_gauss(X, Y, NOM, zoomfig ='auto', sigma=2):
     '''
@@ -171,9 +181,7 @@ def filtrage_gauss(X, Y, NOM, zoomfig ='auto', sigma=2):
             plt.xlim([Xmin, Xmax])
         plt.grid()
         plt.legend()
-        display.clear_output(wait=True)
-        display.display(plt.gcf())
-        plt.show(block=True)
+        show_interactif_loop()
                 
         print(NOM + '  :   le filtrage est-il correct ?\n');
        
@@ -202,6 +210,39 @@ def filtrage_gauss(X, Y, NOM, zoomfig ='auto', sigma=2):
     return(Ygauss)
 
 def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet'):
+    '''
+    Cette fonction sert à remonter deux partie de courbe au même niveau
+    car issu de deux détecteur/spectro différent 
+
+    Parameters
+    ----------
+    X_IR : TYPE
+        DESCRIPTION.
+    Y_IR : TYPE
+        DESCRIPTION.
+    X_VIS : TYPE
+        DESCRIPTION.
+    Y_VIS : TYPE
+        DESCRIPTION.
+    mode : TYPE, optional
+        Perkin ou spectroportable (choix de limite suplémentaire). The default is 'Perkin'.
+    X : TYPE, optional
+        X originel si data coupée. The default is 0.
+    Y : TYPE, optional
+        Y originel si data coupée. The default is 0.
+    NOM : TYPE, optional
+        DESCRIPTION. The default is 'pouet'.
+
+    Returns
+    -------
+    Y_IRDelta : TYPE
+        Y remonté.
+    interpo_limIR : TYPE
+        limite pour les IR.
+    interpo_limVIS : TYPE
+        limite pour le VIS.
+
+    '''
     #plt.ion() #Nécéssaire pour afficher les figures en %matplolib  
     
     Xmin=5000; # Affichage en x min en cm-1
@@ -225,13 +266,12 @@ def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet
     
     FIGsize=(10,6)
     DPI=120
-
+    
+    plt.figure(figsize=FIGsize, dpi=DPI)
     plt.plot(X, Y, label=NOM)
     plt.xlim([Xmin, Xmax])
     plt.grid()
-    display.clear_output(wait=True)
-    display.display(plt.gcf())
-    plt.show(block=True)
+    show_interactif_loop()
     
     while True: # Selection de la zone d'interpolation
         limIR=int(input('Rentrer la limite partie basse IR pour l ajustement (defaut ='
@@ -259,9 +299,7 @@ def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet
         plt.xlim([Xmin, Xmax])
         plt.grid()
         plt.legend()
-        display.clear_output(wait=True)
-        display.display(plt.gcf())
-        plt.show(block=True)
+        show_interactif_loop()
                 
         if(int(input('Est-ce correcte ?\n'
                      + '1 pour oui et continuer la correction, 0 pour non et recommencer \n') or 1)) : break
@@ -341,15 +379,44 @@ def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet
         #plt.ylim([Ymin, Ymax])
         plt.grid()
         plt.legend()
-        display.clear_output(wait=False)
-        display.display(plt.gcf())
-        plt.show(block=True)
+        show_interactif_loop()
         
         Remonte_OK = int(input('La correction est-elle correcte ? \n') or 0)
  
     return (Y_IRDelta, interpo_limIR, interpo_limVIS)
 
 def reconstruction_saut(X_IR, Y_IRDelta, X_VIS, Y_VIS, interpo_limIR, interpo_limVIS, Xinterpo, X, Y, NOM):
+    '''
+    Permet de reconstruire des données trops bruité et donc supprimés.
+
+    Parameters
+    ----------
+    X_IR : TYPE
+        DESCRIPTION.
+    Y_IRDelta : TYPE
+        DESCRIPTION.
+    X_VIS : TYPE
+        DESCRIPTION.
+    Y_VIS : TYPE
+        DESCRIPTION.
+    interpo_limIR : TYPE
+        DESCRIPTION.
+    interpo_limVIS : TYPE
+        DESCRIPTION.
+    Xinterpo : TYPE
+        DESCRIPTION.
+    X : TYPE
+        X originel.
+    Y : TYPE
+        Y originel.
+    NOM : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    None.
+
+    '''
     Xmin=5000; # Affichage en x min en cm-1
     Xmax=20000;# Affichage en x max en cm-1
 
@@ -395,9 +462,7 @@ def reconstruction_saut(X_IR, Y_IRDelta, X_VIS, Y_VIS, interpo_limIR, interpo_li
         #plt.ylim([Ymin, Ymax])
         plt.grid()
         plt.legend()
-        display.clear_output(wait=True)
-        display.display(plt.gcf())
-        plt.show(block=True)
+        show_interactif_loop()
         
         if(int(input('L\'interpolation est-elle correcte ?\nO pour non, 1 pour oui\n') or 0)): break
     
@@ -501,6 +566,33 @@ def correction_saut_detect(X, Y, NOM):
     return (Ycorr)
 
 def Recollage_IR_VIS(X_IR, Y_IRDelta, X_VIS, Y_VIS, interpo_limIR, interpo_limVIS, NOM):
+    '''
+    Cette fonction premet de coller deux jeux de données sans trou.
+    Utilisé pour le spectro portable
+    A complété
+
+    Parameters
+    ----------
+    X_IR : TYPE
+        DESCRIPTION.
+    Y_IRDelta : TYPE
+        DESCRIPTION.
+    X_VIS : TYPE
+        DESCRIPTION.
+    Y_VIS : TYPE
+        DESCRIPTION.
+    interpo_limIR : TYPE
+        DESCRIPTION.
+    interpo_limVIS : TYPE
+        DESCRIPTION.
+    NOM : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    None.
+
+    '''
     Recol_OK=False;
     
     FIGsize=(10,6)
@@ -522,64 +614,85 @@ def Recollage_IR_VIS(X_IR, Y_IRDelta, X_VIS, Y_VIS, interpo_limIR, interpo_limVI
         INDEX_IR = X_IR < np.min(Xtemp)
         INDEX_VIS = X_VIS > np.max(Xtemp)
         
-        FiltrageIR=int(input('Voulez-vous appliquer un filtre gaussien sur la partie IR ? ') or 0)
+        # FiltrageIR=int(input('Voulez-vous appliquer un filtre gaussien sur la partie IR ? ') or 0)
         
-        if FiltrageIR:
-            XIRtemp = np.concatenate([X_IR[INDEX_IR], Xtemp])
-            YIRtemp = np.concatenate([Y_IRDelta[INDEX_IR], Ytemp])
+        # if FiltrageIR:
+        #     XIRtemp = np.concatenate([X_IR[INDEX_IR], Xtemp])
+        #     YIRtemp = np.concatenate([Y_IRDelta[INDEX_IR], Ytemp])
             
-            YIRtempcorr=filtrage_gauss(XIRtemp, YIRtemp, NOM, 'auto')
+        #     YIRtempcorr=filtrage_gauss(XIRtemp, YIRtemp, NOM, 'auto')
             
-            plt.plot(XIRtemp, YIRtemp, label='avant = filtrage')
-            plt.plot(XIRtemp, YIRtempcorr, label='aprés filtrage')
+        #     plt.plot(XIRtemp, YIRtemp, label='avant = filtrage')
+        #     plt.plot(XIRtemp, YIRtempcorr, label='aprés filtrage')
             
-            Xcorr=np.concatenate([XIRtemp, X_VIS[INDEX_VIS]])
-            Ycorr=np.concatenate([YIRtempcorr ,Y_VIS[INDEX_VIS]])
+        #     Xcorr=np.concatenate([XIRtemp, X_VIS[INDEX_VIS]])
+        #     Ycorr=np.concatenate([YIRtempcorr ,Y_VIS[INDEX_VIS]])
         
         
-        else :    
-            Xcorr=np.concatenate([X_IR[INDEX_IR], Xtemp, X_VIS[INDEX_VIS]])
-            Ycorr=np.concatenate([Y_IRDelta[INDEX_IR], Ytemp ,Y_VIS[INDEX_VIS]])
+        # else :    
+        #     Xcorr=np.concatenate([X_IR[INDEX_IR], Xtemp, X_VIS[INDEX_VIS]])
+        #     Ycorr=np.concatenate([Y_IRDelta[INDEX_IR], Ytemp ,Y_VIS[INDEX_VIS]])
+        
+        
+        Xcorr=np.concatenate([X_IR[INDEX_IR], Xtemp, X_VIS[INDEX_VIS]])
+        Ycorr=np.concatenate([Y_IRDelta[INDEX_IR], Ytemp ,Y_VIS[INDEX_VIS]])
+    
+        INDEX=np.argsort(Xcorr) # Pour avoir un jeu de donnée continue
+        Xcorr=Xcorr[INDEX]
+        Ycorr=Ycorr[INDEX]
         
         plt.figure(figsize=FIGsize, dpi=DPI)
         plt.plot(Xcorr,Ycorr, label='Spectre joint')
         plt.grid()
         plt.legend()
-        display.clear_output(wait=True)
-        display.display(plt.gcf())
-        plt.show(block=True)
+        show_interactif_loop()
             
         Recol_OK = int(input('La jonction est-elle correcte ? \n') or 0)
     return(Xcorr, Ycorr)
 
 def Traitement_spectro_portable(CHEMIN_IR, CHEMIN_VIS, NOM='pouet', Addition_Tr='0'):
+    '''
+    Cette fonction déclanche le traitement des spectres issu du spectro portable
+
+    Parameters
+    ----------
+    CHEMIN_IR : TYPE
+        DESCRIPTION.
+    CHEMIN_VIS : TYPE
+        DESCRIPTION.
+    NOM : TYPE, optional
+        DESCRIPTION. The default is 'pouet'.
+    Addition_Tr : TYPE, optional
+        DESCRIPTION. The default is '0'.
+
+    Returns
+    -------
+    None.
+
+    '''
     #print(Addition_Tr)
     #plt.ion() #Nécéssaire pour afficher les figures en %matplolib  
+
+    COUPURE_UV=350;
+     
+    FIGsize=(10,6)
+    DPI=120
+
     Trait_OK = False;
     
-    COUPURE_UV=350;
-        
-    try:
-        Data = np.genfromtxt(CHEMIN_IR, skip_header=2, delimiter=';'); #Ouverture fichier
-    except UnicodeDecodeError:
-        Data = np.genfromtxt(CHEMIN_IR, skip_header=2, delimiter=';', encoding='latin-1');
     
-    X_IR = (1/(Data[:,0]*1E-7))[::-1]; #
-    Y_IR = (- np.log10(Data[:, 1]+Addition_Tr))[::-1];# Si data en %T
+    Xnm_IR, Ytr_IR=Readspectre(CHEMIN_IR) # Lecture fichier IR
+
+    X_IR = (1/(Xnm_IR*1E-7))[::-1]; #
+    Y_IR = (- np.log10(Ytr_IR+Addition_Tr))[::-1];# Si data en %T
     
-    try:
-        Data = np.genfromtxt(CHEMIN_VIS, skip_header=2, delimiter=';'); #Ouverture fichier
-    except UnicodeDecodeError:
-        Data = np.genfromtxt(CHEMIN_VIS, skip_header=2, delimiter=';', encoding='latin-1');
     
-    Xnm=Data[:,0][::-1]
-    YTr=Data[:, 1][::-1]
-    
+    Xnm, YTr=Readspectre(CHEMIN_VIS) # Lecture fichier VIS
+
     INDEX_UV = Xnm > COUPURE_UV;
     
     Xnm=Xnm[INDEX_UV]
     YTr=YTr[INDEX_UV]
-    
     
     X_VIS = (1/(Xnm*1E-7)); # [::-1] = inversion des valeurs dans le tableau
     Y_VIS = (-np.log10(YTr+Addition_Tr));# Si data en %T
@@ -588,18 +701,17 @@ def Traitement_spectro_portable(CHEMIN_IR, CHEMIN_VIS, NOM='pouet', Addition_Tr=
     while not Trait_OK:
         Y_IRDelta, interpo_limIR, interpo_limVIS = Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS,
                                                                     'Portable', X=0,Y=0,NOM=NOM)
+       
         Xcorr, Ycorr = Recollage_IR_VIS(X_IR, Y_IRDelta, X_VIS, Y_VIS, interpo_limIR, interpo_limVIS, NOM)
     
-        plt.figure(figsize=(5,3), dpi=120)
+        plt.figure(figsize=FIGsize, dpi=DPI)
         
         plt.plot(X_IR, Y_IR, label='IR_ori');
         plt.plot(X_VIS, Y_VIS, label='VIS_ori');
         plt.plot(Xcorr,Ycorr, label='Spectre traité')
         plt.grid()
         plt.legend()
-        display.clear_output(wait=True)
-        display.display(plt.gcf())
-        plt.show(block=True)
+        show_interactif_loop()
             
         Trait_OK = int(input('Le traitement final est-il correcte ? \n') or 0)
         
@@ -618,17 +730,16 @@ def Soustraction_reflex(Liste, I100):
         raise ValueError('Il faut juste 2 spectre')
     
     else:
-        Data = np.genfromtxt(Liste[0], skip_header=2, delimiter=';');
+        Xnm, Ytr= Readspectre(Liste[0])
+        Xcorr = 1/(Xnm*1E-7); # 
+        Ycorr  = - np.log10(Ytr)-I100; #
         
-        Xcorr = 1/(Data[:, 0]*1E-7); # 
-        Ycorr  = (Data[:, 1])-I100; #
         
-        
-        Data = np.genfromtxt(Liste[1], skip_header=2, delimiter=';');
+        Xnm, Ytr= Readspectre(Liste[0])
         
         #Xpascorr = 1/(Data[:, 0]*1E-7); # 
-        Ypascorr  = (Data[:, 1])-I100; #
-
+        Ypascorr  = - np.log10(Ytr)-I100; #
+        
         Ydiff=Ypascorr-Ycorr;
 
         plt.figure(figsize=(5,3), dpi=120)
@@ -727,6 +838,8 @@ def Corr2Str(Correction_number):
         Nom de la correction
 
     '''
+    # Correction_number = int(Correction_number)
+    # print(Correction_number)
     if Correction_number == 1:
        Correction_NAME = '_cor_I100.csv'
        
@@ -739,11 +852,19 @@ def Corr2Str(Correction_number):
     elif Correction_number == 4:
        Correction_NAME = '_cor_I100_filtre_saut_filtre.csv'
        Correction_NAME = '_cor_I100_saut.csv'
+   
     elif Correction_number == 5:
        Correction_NAME = '_Tr.csv'
+       #Correction_NAME = '.csv'
     
     elif Correction_number == 6:
         Correction_NAME = '_jointVIS.csv'
+    
+    elif Correction_number == 7:
+        Correction_NAME = '_ABScm.csv'
+    
+    elif Correction_number == 8:
+        Correction_NAME = '_cor_DO.csv'
        
     elif Correction_number == 0:
         Correction_NAME=''
@@ -752,6 +873,19 @@ def Corr2Str(Correction_number):
         raise ValueError("Pb la correction n'existe pas")
     
     return(Correction_NAME)
+
+def SavCSV(X, Y, NOM, Legende, Dossier='./Data_corr', ENTETE='\n X en nm; Y en %T'):
+    try:
+        os.mkdir(Dossier)
+    except OSError:
+        pass
+    
+    HEADER =NOM+ ';' +Legende + ENTETE
+    
+    Save=np.array([X, Y]).transpose() # On met sous la forme XY en colonne.
+    
+    np.savetxt(Dossier+os.sep+NOM, Save, delimiter=';', header=HEADER, comments='');
+      
 
 def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Addition_Tr=0):
     '''
@@ -771,6 +905,9 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Addition_Tr=0):
         4 pour effectué une correction du saut de détecteur du Perkin, avec filtrage et soustraction du blanc.
         5 pour passer une fichier d'ABS en Tr
         6 pour joindre les spectres issu du spectro portable
+        7 pour sauvegarder les spectres en ABS et cm^-1
+    Addition_Tr : float
+        Valeur ajouté à la transmittance en cas de valeurs trop basse qui donne des nan suite au log
     Raises
     ------
     ValueError
@@ -782,15 +919,11 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Addition_Tr=0):
 
     '''
     Liste_corr=[]
-    Dossier = './Data_corriger'
+    Dossier='./Data_corr'
+    ENTETE = '\n X en nm; Y en %T'
     
     if np.size(Addition_Tr) == 1: Addition_Tr=(np.zeros(np.size(Liste)) + Addition_Tr)
     
-    try:
-        os.mkdir(Dossier)
-    except OSError:
-        pass
-
     for i in np.arange(0, np.size(Liste), 1):
         #print(correction)
         
@@ -801,66 +934,72 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Addition_Tr=0):
             Fichier=Liste[i];
             (cheminfichier, nomfichier) = os.path.split(Fichier)
               
-            try:
-                Data = np.genfromtxt(Fichier, skip_header=2, delimiter=';'); #Ouverture fichier
-            except UnicodeDecodeError:
-                Data = np.genfromtxt(Fichier, skip_header=2, delimiter=';', encoding='latin-1');
-            
-            Xnm = (Data[:, 0]);
+            Xnm, Ytr = Readspectre(Fichier)
             X = 1/(Xnm*1E-7); #
             
-            Y = - np.log10(Data[:, 1]+Addition_Tr[i])# Si data en %T
-
-            if(correction[i] == 1): # uniquement soustraction de la référence, sauvegarde en nm
-                try:    
-                    DataREF = np.genfromtxt(Liste_ref[i], skip_header=2, delimiter=';'); #Ouverture fichier
-                except UnicodeDecodeError:
-                    DataREF = np.genfromtxt(Liste_ref[i], skip_header=2, delimiter=';', encoding='latin-1');
-                
-                I100 = -np.log10(DataREF[:, 1])
+            Y = - np.log10(Ytr+Addition_Tr[i])# Si data en %T
             
+            Xsave=Xnm;
+            
+            if(correction[i] == 1): # uniquement soustraction de la référence
+        
+                Xnm_ref, Ytr_ref=Readspectre(Liste_ref[i])
+                I100 = -np.log10(Ytr_ref)
+
                 Y_corr=Y-I100
-                Fichier_corr=nomfichier[0:-4] + Corr2Str(1)
+                Fichier_corr=nomfichier[0:-4] + Corr2Str(correction[i])
                 
             elif(correction[i]==2): # fit bande UV                
-                Y_corr=fit_intervalence(X,Y,Legende[i])    
-                Fichier_corr=nomfichier[0:-4]+ Corr2Str(2)
+                Y_corr=fit_OMCT(X,Y,Legende[i])    
+                Fichier_corr=nomfichier[0:-4]+ Corr2Str(correction[i])
                 
             elif(correction[i]==3): #Lissage
                 Y_corr= filtrage_gauss(X, Y, Legende[i])
-                Fichier_corr=nomfichier[0:-4]+ Corr2Str(3)
+                Fichier_corr=nomfichier[0:-4]+ Corr2Str(correction[i])
                 
             elif(correction[i]==4): # Saut de détecteur
-                try:    
-                    DataREF = np.genfromtxt(Liste_ref[i], skip_header=2, delimiter=';'); #Ouverture fichier
-                except UnicodeDecodeError:
-                    DataREF = np.genfromtxt(Liste_ref[i], skip_header=2, delimiter=';', encoding='latin-1');
-                
-                I100 = -np.log10(DataREF[:, 1])
-            
+                Xnm_ref, Ytr_ref=Readspectre(Liste_ref[i])
+                I100 = -np.log10(Ytr_ref)
+
                 Y_corr=Y-I100;
                 #Y_corr= filtrage_gauss(X, Y_corr, Legende[i])
                 Y_corr= correction_saut_detect(X, Y_corr, Legende[i])
                 #Y_corr= filtrage_gauss(X, Y_corr, Legende[i] + 'corr', 2)
-                Fichier_corr=nomfichier[0:-4] + Corr2Str(4)
+                Fichier_corr=nomfichier[0:-4] + Corr2Str(correction[i])
             
-            elif(correction[i]==5): # passe en Tr
-                Y_corr  = (Data[:, 1])
-                Fichier_corr=nomfichier[0:-4] + Corr2Str(5)
+            elif(correction[i]==5): # passe en Tr, si Ttr en abosrbance il sera remis en %T lors de la sauv
+                Y_corr  = Ytr
+                Fichier_corr=nomfichier[0:-4] + Corr2Str(correction[i])
+                Dossier = './Data_trait'
              
-            elif(correction[i]==6): # Pour le raccord bien penser à mettre le spectre IR dans la Liste et le VIS dans la ref 
-                print(Addition_Tr[i])    
-                Xnm, Y_corr=Traitement_spectro_portable(Liste_ref[i], Fichier, Legende[i], Addition_Tr[i])
-                Fichier_corr=nomfichier[0:-4]+ Corr2Str(6)
+            elif(correction[i]==6): # Pour le raccord bien penser à mettre le spectre IR dans la Liste et le VIS dans la ref   
+                Xnm, Y_corr=Traitement_spectro_portable(Liste_ref[i], Liste[i], Legende[i], Addition_Tr[i])
+                Xsave = Xnm;
+                
+                Fichier_corr=nomfichier[0:-4]+ Corr2Str(correction[i])
+            
+            elif(correction[i]==7): #On sauverager en ABS / cm-1
+                Y_save  = Y
+                Xsave = X;
+                Fichier_corr=nomfichier[0:-4] + Corr2Str(correction[i])
+                Dossier = './Data_ABScm'
+                ENTETE = '\n X en cm^-1; Y en Absorbance'
+             
+            elif(correction[i] == 8): # uniquement soustraction de la référence
+                Xnm_ref, Ytr_ref=Readspectre(Liste_ref[i])
+                REF = -np.log10(Ytr_ref)
+
+                Y_corr=Y+REF
+                Fichier_corr=nomfichier[0:-4] + Corr2Str(correction[i])
             
             else:
                 raise ValueError('La correction demandée n\'est pas implémentée, vérifier le fichier d\'input')
             
             Liste_corr.append(Dossier+os.sep+Fichier_corr);
-          
-            YT_corr=np.power(10, -Y_corr); # On repasse en %T pour assurer la comptabilité avec le reste des scripts
             
-            Save=np.array([Xnm, YT_corr]).transpose() # X en nm, Y en %T           
-            np.savetxt(Dossier+os.sep+Fichier_corr, Save, delimiter=';', header=Fichier_corr+ ';'
-                       +Legende[i] + '\n X en nm; Y en %T', comments='')      
+            if not (correction[i] == 7):
+                Y_save=np.power(10, -Y_corr); # On repasse en %T pour assurer la comptabilité avec le reste des scripts
+
+            SavCSV(Xsave, Y_save, Fichier_corr, Legende[i], Dossier, ENTETE);
+
     return(Liste_corr)

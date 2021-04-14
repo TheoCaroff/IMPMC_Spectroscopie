@@ -205,19 +205,22 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
             Y = -np.log10(Ytr)/valeurnorm[i];
             plt.xlabel("Nombre d'onde ($cm^{-1}$)");
             plt.ylabel('Absorbance normalisée ($cm^{-1}$)') 
+            TITRE = TITRE + 'norm_ep'
+        
         
         elif Modeaff == 'Epsilon':
             X = 1/(Xnm*1E-7);
             Y = -np.log10(Ytr)/valeurnorm[i];
             plt.xlabel("Nombre d'onde ($cm^{-1}$)");
             plt.ylabel('$\\varepsilon (L.mol^{-1}.cm^{-1})$') 
-            
+            TITRE = TITRE + '_Epsilon'
+        
         else:
             X = Xnm;
             Y = Ytr;
             plt.xlabel("Longueur d'onde ($nm$)");
             plt.ylabel('Transmittance (%)') 
-            TITRE = TITRE + 'Tr'
+            TITRE = TITRE + '_Tr'
 
         if modecouleurs == 'auto':
             plt.plot(X, Y, linewidth=linewidth)

@@ -1,5 +1,5 @@
-Nom_fichier;Legende;Chemin_reférence;Correction;Option matplot;Marqueur CIE;Épaisseur (en mm);Concentration_massique (%wt);Taux_redox(El_redox/El_tot);Addition_Tr
-#Correction : 1 pour soustraire la référence, 2 la bande UV, 3 lissage, 4 suppression saut, 5 passe en TR;;;;;;-1;-1;-1;0
+Nom_fichier;Legende;Nom_ref;Correction;Matplot_opt;Marqueur_CIE;Epaisseur;Concentration;Taux_redox;Addition_Tr
+#Corr = 1 : - réf, 2 : - bande UV, 3 :  lissage, 4 : suppression saut PERKIN, 5 : ABS2Tr, 6 : traitement portable;7 : sav ABScm;mettre Blanc, ou partie IR, ou ;;;;(en mm);(%wt) Ou (%) molaire, bien mettre dans le input;(El_redox/El_tot);0
 Perkin/16NaO2_10CaO_14SiO2_ox.Sample.Raw.csv;ox PERKIN;;0;;;-1;-1;-1;0
 Transmission/Vincent_ox_16Na2O_10CaO_14Si02_transvis_00001.csv;ox transmission simple lampe ;Transmission/Vincent_ox_16Na2O_10CaO_14Si02_transNIR_00001.csv;6;;;-1;-1;-1;0
 reflexion/Vincent_ox_16Na2O_10CaO_14Si02_transvis_00001R.csv;ox réflexion;reflexion/Vincent_ox_16Na2O_10CaO_14Si02_transNIR_00001R.csv;6;;;-1;-1;-1;0

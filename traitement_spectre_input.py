@@ -25,16 +25,14 @@ from Nettoyage_spectre import Nettoyage_spectre
 from Nettoyage_spectre import Corr2Str
 from Lecture_input import readinput
 
-INPUTNAME = 'input_Bleu_CDV_soustraction.csv'
-TITRE = INPUTNAME[6:-4]
-#TITRE='pouet'
-
-CORRIGER=False;
+INPUTNAME = 'input_exemple.csv'
 
 # folder = askdirectory()
 # os.chdir(folder)
 
-Liste, Legende, Liste_ref, Correction, optplt, MarqueurCIE, Addition_Tr, valeurnorm, Liste_corr = readinput(INPUTNAME)
+(Liste, Legende, Liste_ref, Correction, optplt, MarqueurCIE, Addition_Tr,
+         valeurnorm, Liste_corr, TITRE) = readinput(INPUTNAME, mode='numpy')
+CORRIGER=False;
 
 #%% Partie absorbance
 Modeaff='ABScm' # ABScm, Reflectance, Transmittance, Epsilon, ABSnormep
@@ -100,17 +98,3 @@ plt_BeerLambert_xy(Fichierref, 'lc Co2+ pur', optionplot='', show='True', TITRE=
 #%% Affichage Lab
 Lab = Affichage_Lab(Liste_corr, Legende, TITRE, MarqueurCIE)
 
-
-#%% Affichage espi
-
-nbonde_min=5000;
-nbonde_max=20000;
-epsimin=0;
-epsimax=40;
-
-SecondAxe=True; #choix double échelle mettre false pour avoir uniquement en cm^-1
-
-Index=(Correction!=0); # On ne prend en compte que les spectres voulu
-
-Affichage_epsi(nbonde_min, nbonde_max, epsimin, epsimax, SecondAxe, Liste_corr[Index],
-               Legende[Index], 0, ConFe2[Index], Epaisseur[Index], '$Fe^{2+}$')

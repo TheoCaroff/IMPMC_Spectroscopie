@@ -7,13 +7,16 @@ Created on Wed Mar 11 11:17:45 2020
 
 import numpy as np
 import os
+
 from matplotlib import pyplot as plt
 from scipy.optimize import curve_fit
 from scipy.ndimage import gaussian_filter1d
 from scipy import interpolate
 from IPython import display
 
-from Affichage_spectre import Readspectre
+from Lecture_input import Readspectre
+from Lecture_input import Corr2Str
+
 
 def show_interactif_loop():
     '''
@@ -244,28 +247,37 @@ def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet
 
     '''
     #plt.ion() #Nécéssaire pour afficher les figures en %matplolib  
+    FIGsize=(10,6)
+    DPI=120
     
-    Xmin=5000; # Affichage en x min en cm-1
-    Xmax=20000;# Affichage en x max en cm-1
-    point_jonction = 11000;
-    
+    if mode == 'Perkin' or mode == 'PortableIR':
+        Xmin=5000; # Affichage en x min en cm-1
+        Xmax=20000;# Affichage en x max en cm-1
+        point_jonction = 11000;
+    elif mode == 'Portable UV':
+        Xmin=20000; # Affichage en x min en cm-1
+        Xmax=30000;# Affichage en x max en cm-1
+        point_jonction = 23200;
+        
     if mode == 'Perkin':
         limIR= 9000;   # limite pour l'ajustement IR
         limVIS = 14000; # 
-    elif mode == 'Portable':
+    elif mode == 'PortableIR':
         limIR= 9000;   # limite pour l'ajustement IR
         limVIS = 12000; # 
         limIR_haute = 12000;
         limVIS_basse = 10000;
-
-
-
-    if mode == 'Portable':
         X = np.concatenate([X_IR, X_VIS]);
         Y = np.concatenate([Y_IR, Y_VIS]);
-    
-    FIGsize=(10,6)
-    DPI=120
+    elif mode == 'Portable UV':
+        limVIS_bas= 9000;   # limite pour l'ajustement IR
+        limVIS_haut = 12000; # 
+        limUV_bas = 10000;
+        limUV_haut = 12000;
+        
+        X = np.concatenate([X_IR, X_VIS]);
+        Y = np.concatenate([Y_IR, Y_VIS]);
+  
     
     plt.figure(figsize=FIGsize, dpi=DPI)
     plt.plot(X, Y, label=NOM)
@@ -274,20 +286,34 @@ def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet
     show_interactif_loop()
     
     while True: # Selection de la zone d'interpolation
-        limIR=int(input('Rentrer la limite partie basse IR pour l ajustement (defaut ='
-                           + str(limIR) +')\n') or limIR);
-        limVIS=int(input('Rentrer la limite partie haute VIS pour l ajustement (defaut ='
-                           + str(limVIS) +')\n') or limVIS);
         
-        interpo_limIR = X_IR > limIR
-        interpo_limVIS = X_VIS < limVIS 
+        if mode == 'Perkin' or mode == 'PortableIR':
+            limIR=int(input('Rentrer la limite partie basse IR pour l ajustement (defaut ='
+                               + str(limIR) +')\n') or limIR);
+            limVIS=int(input('Rentrer la limite partie haute VIS pour l ajustement (defaut ='
+                               + str(limVIS) +')\n') or limVIS);
+            
+            interpo_limIR = X_IR > limIR
+            interpo_limVIS = X_VIS < limVIS 
 
-        
-        if mode == 'Portable':
+        if mode == 'PortableIR':
              limIR_haute=int(input('Rentrer la limite partie HAUTE IR pour l ajustement (defaut ='
                            + str(limIR_haute) +')\n') or limIR_haute);
              limVIS_basse=int(input('Rentrer la limite partie BASSE VIS pour l ajustement (defaut ='
                            + str(limVIS_basse) +')\n') or limVIS_basse);       
+             interpo_limIR = np.logical_and(X_IR > limIR,  X_IR < limIR_haute)
+             interpo_limVIS = np.logical_and(X_VIS < limVIS, X_VIS > limVIS_basse)
+
+        if mode == 'PortableUV':
+             limUV_bas=int(input('Rentrer la limite partie basse UV pour l ajustement (defaut ='
+                               + str(limUV_bas) +')\n') or limUV_bas);
+             limUV_haut=int(input('Rentrer la limite partie haute UV pour l ajustement (defaut ='
+                           + str(limUV_haut) +')\n') or limUV_haut);
+             limVIS_bas=int(input('Rentrer la limite partie basse VIS pour l ajustement (defaut ='
+                               + str(limVIS_bas) +')\n') or limVIS_bas);
+             limVIS_haut=int(input('Rentrer la limite partie haute VIS pour l ajustement (defaut ='
+                           + str(limVIS_haut) +')\n') or limVIS_haut);     
+             
              interpo_limIR = np.logical_and(X_IR > limIR,  X_IR < limIR_haute)
              interpo_limVIS = np.logical_and(X_VIS < limVIS, X_VIS > limVIS_basse)
 
@@ -557,15 +583,13 @@ def correction_saut_detect(X, Y, NOM):
         #plt.ylim([Ymin, Ymax])
         plt.grid()
         plt.legend()
-        display.clear_output(wait=True)
-        display.display(plt.gcf())
-        plt.show(block=True)
+        show_interactif_loop()
         if(int(input('La correction est-elle correcte ?\nO pour non et recommencer depuis le debut, 1 pour oui\n') or 1)): break
         
     #Ycorr=np.concatenate([YR1Delta, Yinterpo, YR2])
     return (Ycorr)
 
-def Recollage_IR_VIS(X_IR, Y_IRDelta, X_VIS, Y_VIS, interpo_limIR, interpo_limVIS, NOM):
+def Recollage_portable(X_IR, Y_IRDelta, X_VIS, Y_VIS, interpo_limIR, interpo_limVIS, NOM):
     '''
     Cette fonction premet de coller deux jeux de données sans trou.
     Utilisé pour le spectro portable
@@ -700,9 +724,9 @@ def Traitement_spectro_portable(CHEMIN_IR, CHEMIN_VIS, NOM='pouet', Addition_Tr=
     
     while not Trait_OK:
         Y_IRDelta, interpo_limIR, interpo_limVIS = Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS,
-                                                                    'Portable', X=0,Y=0,NOM=NOM)
+                                                                    'PortableIR', X=0,Y=0,NOM=NOM)
        
-        Xcorr, Ycorr = Recollage_IR_VIS(X_IR, Y_IRDelta, X_VIS, Y_VIS, interpo_limIR, interpo_limVIS, NOM)
+        Xcorr, Ycorr = Recollage_portable(X_IR, Y_IRDelta, X_VIS, Y_VIS, interpo_limIR, interpo_limVIS, NOM)
     
         plt.figure(figsize=FIGsize, dpi=DPI)
         
@@ -777,17 +801,18 @@ def Soustraction_interpolation(X1, Y1, X2, Y2):
 
     '''
     plt.figure(figsize=([6,3]), dpi=120)
-    plt.plot(X1,Y1, '.', label='DATA 1', markersize=1)
-    plt.plot(X2, Y2, '.', label='DATA 2', markersize=1)
-     
-    if (min(X1)<min(X2)):
-        if (max(X1)>max(X2)): # Les valeur de X2 sont strictement comprise dans X1
+    plt.plot(X1, Y1, '.', label='DATA 1', markersize=1)
+    plt.plot(X2, Y2, '.', label='DATA 2', markersize=3)
+    plt.legend()
+    
+    if (np.nanmin(X1)<np.nanmin(X2)):
+        if (np.nanmax(X1)>np.nanmax(X2)): # Les valeur de X2 sont strictement comprise dans X1
             f = interpolate.interp1d(X1, Y1)
             Xref=X2;
             Y1=f(Xref);
             
         else: #X1 va plus bas en valeur de que X2 mais X2 va plus haut, on coupe donc X2
-            coupure_sup = (X2 <= max(X1))    
+            coupure_sup = (X2 <= np.nanmax(X1))    
             X2=X2[coupure_sup]
             Xref=X2;
             
@@ -795,21 +820,24 @@ def Soustraction_interpolation(X1, Y1, X2, Y2):
             
             f = interpolate.interp1d(X1, Y1)
             Y1=f(Xref);
-    
+
     else: # min X2 > min X1
-        if (max(X1)>max(X2)): # 
-            coupure_sup = (X1 <= max(X2))    
+        if (np.nanmax(X1)>np.nanmax(X2)): # 
+            coupure_sup = (X1 <= np.nanmax(X2))    
             X1=X1[coupure_sup]
             Xref=X1;
             
             Y1=Y1[coupure_sup]
             f = interpolate.interp1d(X2, Y2)
             Y2=f(Xref)
+            print('pouet1')
             
         else: # Les valeurs de X1 sont comrpise dans X2.
-            f = interpolate.interp1d(X1, Y1)
+            f = interpolate.interp1d(X2, Y2)
             Xref=X1;
-            Y1=f(Xref);
+            Y2=f(Xref);
+            print('pouet2')
+
     
     Y_diff=Y2-Y1;
     #Y_diff=-Y_diff
@@ -817,62 +845,37 @@ def Soustraction_interpolation(X1, Y1, X2, Y2):
     plt.legend()
     plt.show
     
-    return(Y_diff, Xref)
+    return(Xref, Y_diff)
 
-def Corr2Str(Correction_number):
+def Soustraction_norm(X1, Y1, X2, Y2):
     '''
-    Cette fonction sert à donner l'extension d'un fichier en fonction de la correction demandé
+    Cette fonction soustrait deux jeux de données en les normalisant entre 0 et 1 et en les interpolants.
+    Y2-Y1
 
     Parameters
     ----------
-    Correction_number : TYPE
+    X1 : TYPE
         DESCRIPTION.
-
-    Raises
-    ------
-    ValueError
+    Y1 : TYPE
+        DESCRIPTION.
+    X2 : TYPE
+        DESCRIPTION.
+    Y2 : TYPE
         DESCRIPTION.
 
     Returns
     -------
-        Nom de la correction
+    None.
 
     '''
-    # Correction_number = int(Correction_number)
-    # print(Correction_number)
-    if Correction_number == 1:
-       Correction_NAME = '_cor_I100.csv'
-       
-    elif Correction_number == 2:
-       Correction_NAME = '_cor_UV.csv'
-       
-    elif Correction_number == 3:
-       Correction_NAME = '_cor_filtre_gauss.csv'
-       
-    elif Correction_number == 4:
-       Correction_NAME = '_cor_I100_filtre_saut_filtre.csv'
-       Correction_NAME = '_cor_I100_saut.csv'
-   
-    elif Correction_number == 5:
-       Correction_NAME = '_Tr.csv'
-       #Correction_NAME = '.csv'
+    Y1=Y1-np.nanmin(Y1)
+    Y1=Y1/np.nanmax(Y1)
     
-    elif Correction_number == 6:
-        Correction_NAME = '_jointVIS.csv'
-    
-    elif Correction_number == 7:
-        Correction_NAME = '_ABScm.csv'
-    
-    elif Correction_number == 8:
-        Correction_NAME = '_cor_DO.csv'
-       
-    elif Correction_number == 0:
-        Correction_NAME=''
-        
-    else :
-        raise ValueError("Pb la correction n'existe pas")
-    
-    return(Correction_NAME)
+    Y2=Y2-np.nanmin(Y2)
+    Y2=Y2/np.nanmax(Y2)
+
+    return(Soustraction_interpolation(X1, Y1, X2, Y2))
+
 
 def SavCSV(X, Y, NOM, Legende, Dossier='./Data_corr', ENTETE='\n X en nm; Y en %T'):
     try:
@@ -972,25 +975,35 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Addition_Tr=0):
                 Fichier_corr=nomfichier[0:-4] + Corr2Str(correction[i])
                 Dossier = './Data_trait'
              
-            elif(correction[i]==6): # Pour le raccord bien penser à mettre le spectre IR dans la Liste et le VIS dans la ref   
+            elif(correction[i]==6): # Spectro portable, pour le raccord bien penser à mettre le spectre IR dans la Liste et le VIS dans la ref   
                 Xnm, Y_corr=Traitement_spectro_portable(Liste_ref[i], Liste[i], Legende[i], Addition_Tr[i])
                 Xsave = Xnm;
                 
                 Fichier_corr=nomfichier[0:-4]+ Corr2Str(correction[i])
             
-            elif(correction[i]==7): #On sauverager en ABS / cm-1
+            elif(correction[i]==7): #sauvergarde en ABS / cm-1
                 Y_save  = Y
                 Xsave = X;
                 Fichier_corr=nomfichier[0:-4] + Corr2Str(correction[i])
                 Dossier = './Data_ABScm'
                 ENTETE = '\n X en cm^-1; Y en Absorbance'
              
-            elif(correction[i] == 8): # uniquement soustraction de la référence
+            elif(correction[i] == 8): # Ajout d'un spectre, utilise si DO mesure spectro portable
                 Xnm_ref, Ytr_ref=Readspectre(Liste_ref[i])
                 REF = -np.log10(Ytr_ref)
 
                 Y_corr=Y+REF
                 Fichier_corr=nomfichier[0:-4] + Corr2Str(correction[i])
+            
+            elif(correction[i] == 9): # Soustration normalisée
+                Xnm_ref, Ytr_ref=Readspectre(Liste_ref[i])
+                YREF = -np.log10(Ytr_ref)
+                XREF = 1/(Xnm_ref*1E-7);
+
+                Xsave, Y_corr = Soustraction_norm(XREF, YREF, X, Y)
+                Xsave=1/(Xsave*1E-7);                
+                Fichier_corr=nomfichier[0:-4] + Corr2Str(correction[i])
+
             
             else:
                 raise ValueError('La correction demandée n\'est pas implémentée, vérifier le fichier d\'input')

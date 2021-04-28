@@ -10,10 +10,86 @@ from copy import copy
 import numpy as np
 import os
 import warnings
-from Nettoyage_spectre import Corr2Str
 import pandas as pd
+import re
+
+
+def Corr2Str(Correction_number):
+    '''
+    Cette fonction sert à donner l'extension d'un fichier en fonction de la correction demandé
+
+    Parameters
+    ----------
+    Correction_number : TYPE
+        DESCRIPTION.
+
+    Raises
+    ------
+    ValueError
+        DESCRIPTION.
+
+    Returns
+    -------
+        Nom de la correction
+
+    '''
+    # Correction_number = int(Correction_number)
+    # print(Correction_number)
+    if Correction_number == 1:
+       Correction_NAME = '_cor_I100.csv'
+       
+    elif Correction_number == 2:
+       Correction_NAME = '_cor_UV.csv'
+       
+    elif Correction_number == 3:
+       Correction_NAME = '_cor_filtre_gauss.csv'
+       
+    elif Correction_number == 4:
+       Correction_NAME = '_cor_I100_filtre_saut_filtre.csv'
+       Correction_NAME = '_cor_I100_saut.csv'
+   
+    elif Correction_number == 5:
+       #Correction_NAME = '_Tr.csv'
+       Correction_NAME = '.csv'
+    
+    elif Correction_number == 6:
+        Correction_NAME = '_jointNIR.csv'
+    
+    elif Correction_number == 7:
+        Correction_NAME = '_ABScm.csv'
+    
+    elif Correction_number == 8:
+        Correction_NAME = '_cor_DO.csv'
+
+    elif Correction_number == 9:
+        Correction_NAME = '_soustrait_norm.csv'
+
+    elif Correction_number == 0:
+        Correction_NAME=''
+        
+    else :
+        raise ValueError("Pb la correction n'existe pas")
+    
+    return(Correction_NAME)
 
 def readinput(INPUTNAME='input.csv', mode='numpy', concentrationinput='none'):
+    '''
+    Cette fonction sert à lire les inputs de traitements et d'affichage des spectres'
+
+    Parameters
+    ----------
+    INPUTNAME : TYPE, optional
+        Nom du fichier d'input. The default is 'input.csv'.
+    mode : TYPE, optional
+        numpy ou pandas. The default is 'numpy'.
+    concentrationinput : TYPE, optional
+        none, epaisseur, molaire, massique. The default is 'none'. A adatper en fonction de l'input et de la normalisation souhaitée
+
+    Returns
+    -------
+    None.
+
+    '''
     
     TITRE = INPUTNAME[6:-4]
 
@@ -122,3 +198,61 @@ def readinput(INPUTNAME='input.csv', mode='numpy', concentrationinput='none'):
         pass
 
     return(Liste, Legende, Liste_ref, Correction, optplt, MarqueurCIE, Addition_Tr, valeurnorm, Liste_corr, TITRE)
+
+
+def mono2tab(Value, size):
+    '''
+    Cette fonction sert à générer un tableau de la taille size, à partir d'un valeur
+
+    Parameters
+    ----------
+    Value : TYPE
+        DESCRIPTION.
+    size : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+        Liste de taille size avec Value dans chaque case.
+
+    '''
+    if (np.size(Value) == 1): # Si pas d'argument un marqueur unique pour toute les données
+        Value_ref = Value
+        Value = []
+        for i in np.arange(0, size):
+            Value.append(Value_ref)
+    return(Value)
+
+
+def Readspectre(Fichier, skip_header=2, delimiter=';'):
+    '''
+    Cette fonction lis un CSV dont le chemin est renseigné dans la variable Fichier,
+    il renvoit un valeur X correpsondant à la première colonne (0) et Y correspondant à la deuxième (1)
+
+    Parameters
+    ----------
+    Fichier : string
+        Chemin vers le fichier à lire.
+
+    Returns
+    -------
+    None.
+
+    '''
+    
+    try:
+        Data = np.genfromtxt(Fichier, skip_header=skip_header, delimiter=delimiter); 
+    except UnicodeDecodeError:
+        Data = np.genfromtxt(Fichier, skip_header=skip_header, delimiter=delimiter, encoding='latin-1'); # si jamais l'encodage n'est pas UTF8
+    
+    X = Data[:, 0]
+    Y = Data[:, 1]
+    return([X, Y])
+
+def natural_sort(l):#Fonction qui sert à trier dans l'ordre naturel (ou humain) les listes.
+    convert = lambda text: int(text) if text.isdigit() else text.lower() 
+    alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key) ] 
+    return sorted(l, key = alphanum_key)
+
+def nm2cm1(X):
+    return(1/(X*1E-7))

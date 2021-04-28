@@ -9,59 +9,18 @@ Ce fichier contient toutes les chose utiles pour tracer et traiter les spectres
 import numpy as np
 import os
 from matplotlib import pyplot as plt
-import colour
 from scipy import interpolate
-from colour import plotting as cplot
-import math
 
 
-def Readspectre(Fichier, skip_header=2, delimiter=';'):
-    '''
-    Cette fonction lis un CSV dont le chemin est renseigné dans la variable Fichier,
-    il renvoit un valeur X correpsondant à la première colonne (0) et Y correspondant à la deuxième (1)
+from Lecture_input import mono2tab
+from Lecture_input import Readspectre
 
-    Parameters
-    ----------
-    Fichier : string
-        Chemin vers le fichier à lire.
+try :
+    import colour
+    from colour import plotting as cplot
+except ModuleNotFoundError :
+    print('ATTENTION MODULE COLOR-SCIENCE PAS INSTALLER')
 
-    Returns
-    -------
-    None.
-
-    '''
-    
-    try:
-        Data = np.genfromtxt(Fichier, skip_header=skip_header, delimiter=delimiter); 
-    except UnicodeDecodeError:
-        Data = np.genfromtxt(Fichier, skip_header=skip_header, delimiter=delimiter, encoding='latin-1'); # si jamais l'encodage n'est pas UTF8
-    
-    X = Data[:, 0]
-    Y = Data[:, 1]
-    return([X, Y])
-
-def mono2tab(Value, size):
-    '''
-    Cette fonction sert à générer un tableau de la taille size, à partir d'un valeur
-
-    Parameters
-    ----------
-    Value : TYPE
-        DESCRIPTION.
-    size : TYPE
-        DESCRIPTION.
-
-    Returns
-    -------
-        Liste de taille size avec Value dans chaque case.
-
-    '''
-    if (np.size(Value) == 1): # Si pas d'argument un marqueur unique pour toute les données
-        Value_ref = Value
-        Value = []
-        for i in np.arange(0, size):
-            Value.append(Value_ref)
-    return(Value)
 
 def set_graph(FIGSIZE=[12, 6], DPI = 120, grid=True):
     '''
@@ -83,6 +42,7 @@ def set_graph(FIGSIZE=[12, 6], DPI = 120, grid=True):
     '''
     plt.style.use({'figure.figsize': FIGSIZE, 'figure.dpi': DPI})
 #   plt.figure(figsize=(FIGSIZE), dpi=DPI)
+    plt.figure()
     plt.grid(grid);
     plt.subplots_adjust(left=0.05, bottom=0.1, right=0.95, top=0.9, wspace=0.1, hspace=0.1)
 
@@ -163,7 +123,7 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
 
     '''
     
-    Liste=mono2tab(Liste, np.size(Liste))
+    #Liste=mono2tab(Liste, np.size(Liste))
     Legende=mono2tab(Legende, np.size(Liste))
     optionplot=mono2tab(optionplot, np.size(Liste))
     AdditionTr=mono2tab(AdditionTr, np.size(Liste))
@@ -172,8 +132,6 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
     set_graph() # Cf fonction, on créer la figure à la bonne taille/résolution
 
     colorsbigdata = plt.cm.nipy_spectral(np.linspace(0,1,np.size(Liste))) # On fixe la gamme de couleur utilisé
-
-
 
     if Autoaxe:
         pass

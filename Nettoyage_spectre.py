@@ -148,7 +148,7 @@ def filtrage_gauss(X, Y, NOM, zoomfig ='auto', sigma=2):
     '''
     Cette fonction sert à débruité un signal avec un filtrage gaussien (convolution par une petite gausienne,
             ce qui équivaux dans l'espace de fourrier à une multiplication par une large gausienne')
-    ==> on élimine le bruit haute fréquence.
+    ==> on élimine le bruit haute fréquence. EN TRAVAUX
 
     Parameters
     ----------
@@ -172,7 +172,20 @@ def filtrage_gauss(X, Y, NOM, zoomfig ='auto', sigma=2):
     Xmax=32000
     Zoom=0;
     
-    #plt.ion() #Nécéssaire pour afficher les figures en %matplolib  
+    #plt.ion() #Nécéssaire pour afficher les figures en %matplolib
+    plt.figure(figsize=(5,3), dpi=180)
+    plt.plot(X, Y, label='Original')
+    plt.grid()
+    plt.show()
+   
+    selectzone = int(input('Voulez-vous selectionner une zone ou lisser toutes la courbe ? \n')) or 0
+    
+    RES=X<(X) # On sépare les data  au dessus de Xdebcoup
+    XR1=X[RES]
+    YR1=Y[RES]
+    
+    X = np.concatenate([X, X]);
+   
     while True:
         plt.figure(figsize=(5,3), dpi=180)
         Ygauss=gaussian_filter1d(Y, sigma)
@@ -194,7 +207,9 @@ def filtrage_gauss(X, Y, NOM, zoomfig ='auto', sigma=2):
             print('Vous n\'avez pas rentré un nombre, le fit est considéré comme mauvais')
             fit_OK=False;
         if fit_OK : break
-        Zoom=int(input("Voulez vous zoomer sur une zone ? (0 non, 1 oui)\n") or 0)
+       
+        if (zoomfig != 'auto'):
+            Zoom=int(input("Voulez vous zoomer sur une zone ? (0 non, 1 oui)\n") or 0)
        
         if Zoom and (zoomfig != 'auto') :
             Xmin = float(input('Valeur min nb onde en cm-1 (default = '+
@@ -957,7 +972,7 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Addition_Tr=0):
                 Fichier_corr=nomfichier[0:-4]+ Corr2Str(correction[i])
                 
             elif(correction[i]==3): #Lissage
-                Y_corr= filtrage_gauss(X, Y, Legende[i])
+                Y_corr= filtrage_gauss(X, Y, Legende[i], zoomfig='manuel')
                 Fichier_corr=nomfichier[0:-4]+ Corr2Str(correction[i])
                 
             elif(correction[i]==4): # Saut de détecteur

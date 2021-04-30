@@ -12,7 +12,9 @@ import os
 import warnings
 import pandas as pd
 import re
-
+from tkinter.filedialog import askdirectory
+import tempfile
+import fnmatch
 
 def Corr2Str(Correction_number):
     '''
@@ -71,6 +73,43 @@ def Corr2Str(Correction_number):
         raise ValueError("Pb la correction n'existe pas")
     
     return(Correction_NAME)
+
+
+def Chemin2Liste(TITRE, Recuperer_nom_dossier_temporaire=False, CLEFDETRIE='', CHEMIN='.', DOSSIER='Data_trait'):
+    
+    if CLEFDETRIE== '' : 
+        CLEFDETRIE = '*'+TITRE+'*'
+    
+    #DOSSIER = 'Data_corriger_appareil' # Dossier avec les data et UNIQUEMENT LES DATAs
+
+    if Recuperer_nom_dossier_temporaire:
+        repspectro = open(tempfile.gettempdir()+os.sep+'repspectro', 'r');
+        folder = repspectro.read();
+        repspectro.close();
+
+    else:
+        folder = CHEMIN
+        #folder = askdirectory()
+    
+    os.chdir(folder)
+    folder = folder + os.sep + DOSSIER
+    Liste = os.listdir(folder); #Récupère la liste des fichiers
+    Liste = natural_sort(Liste)
+    Liste = fnmatch.filter(Liste, CLEFDETRIE)
+    
+    
+    Legende=[x[:-4] for x in Liste]
+    
+    Liste=[DOSSIER + os.sep + x for x in Liste]
+    Liste_ref=''
+    Liste_corr=''
+    MarqueurCIE=''
+    Addition_Tr=0
+    valeurnorm=1
+    Correction=0
+    optplt=''
+    
+    return(Liste, Legende, Liste_ref, Correction, optplt, MarqueurCIE, Addition_Tr, valeurnorm, Liste_corr, TITRE)
 
 def readinput(INPUTNAME='input.csv', mode='numpy', concentrationinput='none'):
     '''
@@ -159,7 +198,8 @@ def readinput(INPUTNAME='input.csv', mode='numpy', concentrationinput='none'):
         try :       Tx_redox = Data[:, 8].astype(np.float) # Le taux de rédox = [Fe2+]/[Fetot]
         except :    Tx_redox=1;
         
-        
+    print(concentrationinput)
+    
     if concentrationinput == 'epaisseur':
         valeurnorm = Epaisseur
     

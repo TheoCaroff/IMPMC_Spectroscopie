@@ -150,20 +150,23 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
             X = 1/(Xnm*1E-7);
             Y = -np.log10(Ytr);
             plt.xlabel("Nombre d'onde ($cm^{-1}$)");
-            plt.ylabel('Absorbance') 
+            plt.ylabel('Absorbance')
+            RAJOUT= ''
         
         elif Modeaff == 'Reflectance':
             X = 1/(Xnm*1E-7);
             Y = 1-Ytr;
             plt.xlabel("Nombre d'onde ($cm^{-1}$)");
             plt.ylabel('Reflectance')
+            RAJOUT = '_Reflexion'
        
         elif Modeaff == 'ABSnormep':
             X = 1/(Xnm*1E-7);
-            Y = -np.log10(Ytr)/valeurnorm[i];
+            Y = -np.log10(Ytr);
+            Y = Y/valeurnorm[i];
             plt.xlabel("Nombre d'onde ($cm^{-1}$)");
             plt.ylabel('Absorbance normalisée ($cm^{-1}$)') 
-            TITRE = TITRE + 'norm_ep'
+            RAJOUT = 'norm_ep'
         
         
         elif Modeaff == 'Epsilon':
@@ -171,15 +174,15 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
             Y = -np.log10(Ytr)/valeurnorm[i];
             plt.xlabel("Nombre d'onde ($cm^{-1}$)");
             plt.ylabel('$\\varepsilon (L.mol^{-1}.cm^{-1})$') 
-            TITRE = TITRE + '_Epsilon'
+            RAJOUT = '_Epsilon'
         
         else:
             X = Xnm;
             Y = Ytr;
             plt.xlabel("Longueur d'onde ($nm$)");
-            plt.ylabel('Transmittance (%)') 
-            TITRE = TITRE + '_Tr'
-
+            plt.ylabel('Transmittance') 
+            RAJOUT = '_Tr'
+        
         if modecouleurs == 'auto':
             plt.plot(X, Y, linewidth=linewidth)
         
@@ -195,6 +198,9 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
     #plt.legend(Legende, loc="upper left");
     #plt.legend(Legende, bbox_to_anchor = [0.5, 0.2])
     plt.legend(Legende);
+    
+    TITRE=TITRE+RAJOUT
+    
     
     ax1=plt.gca()
     fig=plt.gcf()   
@@ -367,7 +373,7 @@ def plt_BeerLambert_xy(Fichier, Legende, optionplot='', show='True', TITRE='CIE1
     
     plt.legend()
     
-    if show : Sav_fig();
+    if show : Sav_fig(TITRE, cplot=True);
 
 def Affichage_Lab(Liste, Legende, TITRE='Lab', Marqueur='', SHOW='True'):
     

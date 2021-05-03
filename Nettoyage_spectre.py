@@ -2,7 +2,8 @@
 """
 Created on Wed Mar 11 11:17:45 2020
 
-@author: Theo_C
+@author: Théo Caroff
+        Avec ajout de Dongxin sur la fonction filtrage_gauss
 """
 
 import numpy as np
@@ -166,33 +167,52 @@ def filtrage_gauss(X, Y, NOM, zoomfig ='auto', sigma=2):
     Ygauss : le signal filtré
 
     '''
-    Amin=0.2
-    Amax=1
+    Amin=-0.2
+    Amax=0.7
     Xmin=4000
-    Xmax=32000
+    Xmax=40000
     Zoom=0;
+    zone_min=500;
+    zone_max=10000;
     
     #plt.ion() #Nécéssaire pour afficher les figures en %matplolib
     plt.figure(figsize=(5,3), dpi=180)
     plt.plot(X, Y, label='Original')
     plt.grid()
     plt.show()
-   
-    selectzone = int(input('Voulez-vous selectionner une zone ou lisser toutes la courbe ? \n')) or 0
-    
-    RES=X<(X) # On sépare les data  au dessus de Xdebcoup
-    XR1=X[RES]
-    YR1=Y[RES]
-    
-    X = np.concatenate([X, X]);
-   
-    while True:
+    selectzone = int(input('Voulez-vous selectionner une zone ou lisser toutes la courbe ? 1=une zone, 0=toute la zone \n')) or 0
+    while True: 
+        if selectzone == 1:
+            zone_min=float(input('Nombre d\'onde: début de la zone (default='+ str(zone_min) + ') \n ') or zone_min);
+            zone_max=float(input('Nombre d\'onde: fin de la zone (default='+ str(zone_max) + ') \n ') or zone_max);
+            
+            zone=X<=(zone_min) # on sépare les data inférieur à zone_min
+            XR1=X[zone]
+            YR1=Y[zone]  
+            zone = np.logical_and(X > zone_min, X < zone_max) # on prend l'intervalle où on souhaite lisser
+            XR2=X[zone]
+            YR2=Y[zone]  
+            zone=X>=(zone_max) # on sépare les data au dessus de zone_max
+            XR3=X[zone]
+            YR3=Y[zone]
+            
+            Y_fit = gaussian_filter1d(YR2,sigma) # on filtre la partie qu'on souhaite
+            Xfit=XR2;
+            
+            X1 = np.concatenate([XR1,XR2]) # on rassemble les valeurs XR1 et XR2
+            Y1 = np.concatenate([YR1,Y_fit])
+            Ygauss = np.concatenate([Y1,YR3]) # on rassemble l'ensemble des valeurs Y
+            X = np.concatenate([X1,XR3]) # on rassemble l'ensemble des valeurs X
+        
+        if selectzone == 0:
+            Ygauss = gaussian_filter1d(Y,sigma) # on lisse sur l'ensemble 
+            Xfit=X;
+            Y_fit=Ygauss;
+            
         plt.figure(figsize=(5,3), dpi=180)
-        Ygauss=gaussian_filter1d(Y, sigma)
-    
         plt.plot(X, Y, label='Original')
-        plt.plot(X, Ygauss, label='filtrée Gauss')
-        if zoomfig != 'auto' :
+        plt.plot(Xfit, Y_fit, label='filtrée Gauss')
+        if zoomfig != 'auto' and Zoom == 1 :
             plt.ylim([Amin, Amax])
             plt.xlim([Xmin, Xmax])
         plt.grid()
@@ -224,8 +244,17 @@ def filtrage_gauss(X, Y, NOM, zoomfig ='auto', sigma=2):
         sigma = float(input('Rentrer la valeur sigma du filtre gaussien (default = '+
                                  str(sigma) + ')\n') or sigma);
         
-    
-    return(Ygauss)
+        # plt.figure(figsize=(5,3), dpi=180)
+        # plt.plot(X, Y, label='Original')
+        # plt.plot(X, Ygauss, label='filtrée Gauss')
+        # if zoomfig != 'auto' :
+        #     plt.ylim([Amin, Amax])
+        #     plt.xlim([Xmin, Xmax])
+        # plt.grid()
+        # plt.legend()
+        # show_interactif_loop()
+        
+    return(X, Ygauss)
 
 def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet'):
     '''
@@ -901,7 +930,6 @@ def SavCSV(X, Y, NOM, Legende, Dossier='./Data_corr', ENTETE='\n X en nm; Y en %
     HEADER =NOM+ ';' +Legende + ENTETE
     
     Save=np.array([X, Y]).transpose() # On met sous la forme XY en colonne.
-    
     np.savetxt(Dossier+os.sep+NOM, Save, delimiter=';', header=HEADER, comments='');
       
 
@@ -972,7 +1000,7 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Addition_Tr=0):
                 Fichier_corr=nomfichier[0:-4]+ Corr2Str(correction[i])
                 
             elif(correction[i]==3): #Lissage
-                Y_corr= filtrage_gauss(X, Y, Legende[i], zoomfig='manuel')
+                Xsave, Y_corr= filtrage_gauss(X, Y, Legende[i], zoomfig='manuel')
                 Fichier_corr=nomfichier[0:-4]+ Corr2Str(correction[i])
                 
             elif(correction[i]==4): # Saut de détecteur

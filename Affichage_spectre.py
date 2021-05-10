@@ -47,7 +47,7 @@ def set_graph(FIGSIZE=[12, 6], DPI = 120, grid=True):
     plt.subplots_adjust(left=0.05, bottom=0.1, right=0.95, top=0.9, wspace=0.1, hspace=0.1)
 
 
-def Sav_fig(Titre='Pouet', Repertoire='Graph', cplot=False):
+def Sav_fig(Titre='Pouet', Repertoire='Graph', colorplot=False):
     '''
     Cette fonction permet de sauvegarer un graph matplotlib puis l'affiche'
 
@@ -72,7 +72,7 @@ def Sav_fig(Titre='Pouet', Repertoire='Graph', cplot=False):
     
     plt.savefig(Repertoire+os.sep+Titre, bbox_inches='tight')
 
-    if cplot:
+    if colorplot:
         cplot.render(standalone=True)
     else:
         plt.show()
@@ -152,6 +152,14 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
             plt.xlabel("Nombre d'onde ($cm^{-1}$)");
             plt.ylabel('Absorbance')
             RAJOUT= ''
+        
+        elif Modeaff == 'ABSnm':
+            X = Xnm;
+            Y = -np.log10(Ytr);
+            plt.xlabel("Longueur d'onde (en nm)");
+            plt.ylabel('Absorbance')
+            RAJOUT= '_ABSnm'
+        
         
         elif Modeaff == 'Reflectance':
             X = 1/(Xnm*1E-7);
@@ -330,7 +338,7 @@ def AffichageCIE1931(Liste, Legende, TITRE='CIE1931', Marqueur='', Fleche=True,
         
     plt.legend()
 
-    if show: Sav_fig(TITRE, cplot=True)
+    if show: Sav_fig(TITRE, colorplot=True)
     
     return(xtable, ytable)
 
@@ -373,7 +381,7 @@ def plt_BeerLambert_xy(Fichier, Legende, optionplot='', show='True', TITRE='CIE1
     
     plt.legend()
     
-    if show : Sav_fig(TITRE, cplot=True);
+    if show : Sav_fig(TITRE, colorplot=True);
 
 def Affichage_Lab(Liste, Legende, TITRE='Lab', Marqueur='', SHOW='True'):
     

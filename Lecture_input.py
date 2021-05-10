@@ -47,8 +47,8 @@ def Corr2Str(Correction_number):
        Correction_NAME = '_cor_filtre_gauss.csv'
        
     elif Correction_number == 4:
-       Correction_NAME = '_cor_I100_filtre_saut_filtre.csv'
-       Correction_NAME = '_cor_I100_saut.csv'
+       Correction_NAME = '_cor_I100_saut_filtre.csv'
+       #Correction_NAME = '_cor_I100_saut.csv'
    
     elif Correction_number == 5:
        #Correction_NAME = '_Tr.csv'

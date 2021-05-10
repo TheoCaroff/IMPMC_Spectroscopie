@@ -1001,6 +1001,7 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Addition_Tr=0):
                 
             elif(correction[i]==3): #Lissage
                 Xsave, Y_corr= filtrage_gauss(X, Y, Legende[i], zoomfig='manuel')
+                Xsave = 1/(Xsave*1E-7);
                 Fichier_corr=nomfichier[0:-4]+ Corr2Str(correction[i])
                 
             elif(correction[i]==4): # Saut de détecteur
@@ -1010,7 +1011,7 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Addition_Tr=0):
                 Y_corr=Y-I100;
                 #Y_corr= filtrage_gauss(X, Y_corr, Legende[i])
                 Y_corr= correction_saut_detect(X, Y_corr, Legende[i])
-                #Y_corr= filtrage_gauss(X, Y_corr, Legende[i] + 'corr', 2)
+                Y_corr= filtrage_gauss(X, Y_corr, Legende[i] + 'corr', 2)
                 Fichier_corr=nomfichier[0:-4] + Corr2Str(correction[i])
             
             elif(correction[i]==5): # passe en Tr, si Ttr en abosrbance il sera remis en %T lors de la sauv

@@ -74,14 +74,82 @@ def Corr2Str(Correction_number):
     
     return(Correction_NAME)
 
+def list_folder_filter(CLEFDETRIE='', CHEMIN='.', DOSSIER='Data_trait'):
+    os.chdir(CHEMIN)
+    CHEMIN = CHEMIN + os.sep + DOSSIER
+    Liste = os.listdir(CHEMIN); #Récupère la liste des fichiers
+    Liste = natural_sort(Liste)
+    Liste = fnmatch.filter(Liste, CLEFDETRIE)
+    return(Liste)
 
-def Chemin2Liste(TITRE, Recuperer_nom_dossier_temporaire=False, CLEFDETRIE='', CHEMIN='.', DOSSIER='Data_trait'):
-    
+def Chemin2input(TITRE, CLEFDETRIE='', CHEMIN='.', DOSSIER='Data_trait', mode='portable', correction='0'):
     if CLEFDETRIE== '' : 
         CLEFDETRIE = '*'+TITRE+'*'
     
-    #DOSSIER = 'Data_corriger_appareil' # Dossier avec les data et UNIQUEMENT LES DATAs
+    if mode == 'portable':
+        Liste       = list_folder_filter(CLEFDETRIE+'*VIS*', CHEMIN, DOSSIER);
+        Liste_ref   = list_folder_filter(CLEFDETRIE+'*NIR*', CHEMIN, DOSSIER);
+        Legende     = [re.sub("_Transmission.*csv", '', x) for x in Liste]
+        Correction  = 6;
+        
+    if mode == 'PERKIN':
+        Liste       = list_folder_filter(CLEFDETRIE+'*VIS*', CHEMIN, DOSSIER);
+        Liste_ref   = mono2tab('', np.size(Liste))
+        Legende     = [re.sub("Sample.*csv", '', x) for x in Liste]
+        Correction  = 1
+        
+    Liste=['.'+os.sep + DOSSIER + os.sep + x for x in Liste]
+    Liste_ref=['.'+os.sep + DOSSIER + os.sep + x for x in Liste_ref]
+    
+    taille=np.size(Liste)
+    
+    df = pd.DataFrame(dict(Nom_fichier=Liste,
+                      Legende       = Legende,
+                      Nom_ref       = Liste_ref,
+                      Correction    = np.ones(taille)*Correction,
+                      Matplot_opt   = mono2tab('', taille),
+                      Marqueur_CIE  = mono2tab('', taille),
+                      Epaisseur     = np.zeros(taille),
+                      Concentration = np.ones(taille)*-1,
+                      Tx_redox      = np.ones(taille),
+                      Addition_Tr   = np.zeros(taille)))
+    
+    SAVE=df.to_csv(sep=';', index=False);
+    
+    print(SAVE)
+    
+    text_file = open('input_'+TITRE+'.csv', "w")
 
+    text_file.write(SAVE)
+    
+    text_file.close()
+    
+def Chemin2Liste(TITRE, Recuperer_nom_dossier_temporaire=False, CLEFDETRIE='', CHEMIN='.', DOSSIER='Data_trait'):
+    '''
+    Cette fonction permet d'utiliser les codes écrit pour fonctionner avec un input en listant les fichier
+    dans DOSSIER situé dans CHEMIN
+
+    Parameters
+    ----------
+    TITRE : TYPE
+        DESCRIPTION.
+    Recuperer_nom_dossier_temporaire : TYPE, optional
+        DESCRIPTION. The default is False.
+    CLEFDETRIE : TYPE, optional
+        DESCRIPTION. The default is ''.
+    CHEMIN : TYPE, optional
+        DESCRIPTION. The default is '.'.
+    DOSSIER : TYPE, optional
+        DESCRIPTION. The default is 'Data_trait'.
+
+    Returns
+    -------
+    None.
+
+    '''
+    if CLEFDETRIE== '' : 
+        CLEFDETRIE = '*'+TITRE+'*'
+    
     if Recuperer_nom_dossier_temporaire:
         repspectro = open(tempfile.gettempdir()+os.sep+'repspectro', 'r');
         folder = repspectro.read();
@@ -91,12 +159,7 @@ def Chemin2Liste(TITRE, Recuperer_nom_dossier_temporaire=False, CLEFDETRIE='', C
         folder = CHEMIN
         #folder = askdirectory()
     
-    os.chdir(folder)
-    folder = folder + os.sep + DOSSIER
-    Liste = os.listdir(folder); #Récupère la liste des fichiers
-    Liste = natural_sort(Liste)
-    Liste = fnmatch.filter(Liste, CLEFDETRIE)
-    
+    Liste = list_folder_filter(CLEFDETRIE, CHEMIN, folder);
     
     Legende=[x[:-4] for x in Liste]
     
@@ -110,6 +173,7 @@ def Chemin2Liste(TITRE, Recuperer_nom_dossier_temporaire=False, CLEFDETRIE='', C
     optplt=''
     
     return(Liste, Legende, Liste_ref, Correction, optplt, MarqueurCIE, Addition_Tr, valeurnorm, Liste_corr, TITRE)
+
 
 def readinput(INPUTNAME='input.csv', mode='numpy', concentrationinput='none'):
     '''
@@ -138,7 +202,6 @@ def readinput(INPUTNAME='input.csv', mode='numpy', concentrationinput='none'):
         except UnicodeDecodeError:
             print("INPUT PAS UNICODE")
             Data = np.genfromtxt(INPUTNAME, comments='#', skip_header=1, delimiter=';', dtype='str', encoding='latin-1');
-    
     # Récupération des données de base du fichier d'input
         Liste = (Data[:, 0].tolist())
         Legende = (Data[:, 1])
@@ -195,7 +258,7 @@ def readinput(INPUTNAME='input.csv', mode='numpy', concentrationinput='none'):
         try :       Concentration = Data.Concentration.to_list()
         except :    Concentration=-1
         
-        try :       Tx_redox = Data[:, 8].astype(np.float) # Le taux de rédox = [Fe2+]/[Fetot]
+        try :       Tx_redox = Data.Tx_redox.to_list()# Le taux de rédox = [Fe2+]/[Fetot]
         except :    Tx_redox=1;
         
     print(concentrationinput)
@@ -238,6 +301,7 @@ def readinput(INPUTNAME='input.csv', mode='numpy', concentrationinput='none'):
         pass
 
     return(Liste, Legende, Liste_ref, Correction, optplt, MarqueurCIE, Addition_Tr, valeurnorm, Liste_corr, TITRE)
+
 
 
 def mono2tab(Value, size):

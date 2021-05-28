@@ -29,8 +29,8 @@ def show_interactif_loop():
     None.
 
     '''
-    # display.clear_output(wait=True)
-    # display.display(plt.gcf())
+    display.clear_output(wait=True)
+    display.display(plt.gcf())
     plt.show(block=True)
       
 def fit_OMCT(X, Y, NOM): 
@@ -294,33 +294,35 @@ def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet
     FIGsize=(10,6)
     DPI=120
     
-    if mode == 'Perkin' or mode == 'PortableIR':
-        Xmin=5000; # Affichage en x min en cm-1
-        Xmax=20000;# Affichage en x max en cm-1
-        point_jonction = 11000;
-    elif mode == 'Portable UV':
-        Xmin=20000; # Affichage en x min en cm-1
-        Xmax=30000;# Affichage en x max en cm-1
-        point_jonction = 23200;
+
+    Xmin=5000; # Affichage en x min en cm-1
+    Xmax=20000;# Affichage en x max en cm-1
+
         
     if mode == 'Perkin':
         limIR= 9000;   # limite pour l'ajustement IR
         limVIS = 14000; # 
+        point_jonction = 11000;
     elif mode == 'PortableIR':
         limIR= 9000;   # limite pour l'ajustement IR
-        limVIS = 12000; # 
-        limIR_haute = 12000;
-        limVIS_basse = 10000;
+        limVIS = 11000; # 
+        limIR_haute = 10000;
+        limVIS_basse = 9500;
         X = np.concatenate([X_IR, X_VIS]);
         Y = np.concatenate([Y_IR, Y_VIS]);
+        point_jonction = 10000;
+        
     elif mode == 'Portable UV':
         limVIS_bas= 9000;   # limite pour l'ajustement IR
         limVIS_haut = 12000; # 
         limUV_bas = 10000;
         limUV_haut = 12000;
-        
+        point_jonction = 23200;
         X = np.concatenate([X_IR, X_VIS]);
         Y = np.concatenate([Y_IR, Y_VIS]);
+        Xmin=20000; # Affichage en x min en cm-1
+        Xmax=30000;# Affichage en x max en cm-1
+
   
     
     plt.figure(figsize=FIGsize, dpi=DPI)
@@ -741,7 +743,7 @@ def Traitement_spectro_portable(CHEMIN_IR, CHEMIN_VIS, NOM='pouet', Addition_Tr=
     #print(Addition_Tr)
     #plt.ion() #Nécéssaire pour afficher les figures en %matplolib  
 
-    COUPURE_UV=350;
+    COUPURE_UV=300;
      
     FIGsize=(10,6)
     DPI=120
@@ -1011,7 +1013,10 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Addition_Tr=0):
                 Y_corr=Y-I100;
                 #Y_corr= filtrage_gauss(X, Y_corr, Legende[i])
                 Y_corr= correction_saut_detect(X, Y_corr, Legende[i])
-                Y_corr= filtrage_gauss(X, Y_corr, Legende[i] + 'corr', 2)
+                
+                Xsave, Y_corr= filtrage_gauss(X, Y_corr, Legende[i] + 'corr', 2)
+                Xsave = 1/(Xsave*1E-7);
+                
                 Fichier_corr=nomfichier[0:-4] + Corr2Str(correction[i])
             
             elif(correction[i]==5): # passe en Tr, si Ttr en abosrbance il sera remis en %T lors de la sauv

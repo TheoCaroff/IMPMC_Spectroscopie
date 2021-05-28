@@ -80,7 +80,7 @@ def Sav_fig(Titre='Pouet', Repertoire='Graph', colorplot=False):
 def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5],
                   SecondAxe=True, TITRE='superposition', AdditionTr=0,
                   linewidth=1.5, valeurnorm=1, Modeaff='ABScm', modecouleurs='auto', optionplot='',
-                  SHOW=True):
+                  SHOW=True, COUPURENORMminmax=[400, 2500]):
     '''
     Cette fonction affiche des spectes optique obtenu en %T en absorbance et
     sauvegarde le graph dans un dossier graph placé dans le repertoire courant
@@ -160,7 +160,14 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
             plt.ylabel('Absorbance')
             RAJOUT= '_ABSnm'
         
-        
+        elif Modeaff == 'ABSnorm_min_max':
+             X = 1/(Xnm*1E-7);
+             Y = - np.log10(Ytr);
+             INDEX = np.logical_and(Xnm>COUPURENORMminmax[0], Xnm<COUPURENORMminmax[1])             
+             Y = Y - np.min(Y[INDEX])
+             Y = Y/np.max(Y[INDEX])
+             RAJOUT = '_normminmax'
+             
         elif Modeaff == 'Reflectance':
             X = 1/(Xnm*1E-7);
             Y = 1-Ytr;

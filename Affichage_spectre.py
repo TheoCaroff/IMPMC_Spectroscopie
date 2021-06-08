@@ -14,6 +14,7 @@ from scipy import interpolate
 
 from Lecture_input import mono2tab
 from Lecture_input import Readspectre
+from Lecture_input import normYminmax
 
 try :
     import colour
@@ -161,13 +162,13 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
             RAJOUT= '_ABSnm'
         
         elif Modeaff == 'ABSnorm_min_max':
-             X = 1/(Xnm*1E-7);
-             Y = - np.log10(Ytr);
-             INDEX = np.logical_and(Xnm>COUPURENORMminmax[0], Xnm<COUPURENORMminmax[1])             
-             Y = Y - np.min(Y[INDEX])
-             Y = Y/np.max(Y[INDEX])
-             RAJOUT = '_normminmax'
-             
+            X = 1/(Xnm*1E-7);
+            Y = - np.log10(Ytr);
+            Y = normYminmax(Xnm, Y, COUPURENORMminmax)
+            plt.xlabel("Nombre d'onde ($cm^{-1}$)");
+            plt.ylabel('Absorbance normalisé (u.a)')
+            RAJOUT = '_normminmax'
+            
         elif Modeaff == 'Reflectance':
             X = 1/(Xnm*1E-7);
             Y = 1-Ytr;
@@ -181,8 +182,7 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
             Y = Y/valeurnorm[i];
             plt.xlabel("Nombre d'onde ($cm^{-1}$)");
             plt.ylabel('Absorbance normalisée ($cm^{-1}$)') 
-            RAJOUT = 'norm_ep'
-        
+            RAJOUT = '_norm_ep'
         
         elif Modeaff == 'Epsilon':
             X = 1/(Xnm*1E-7);
@@ -220,7 +220,7 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
     ax1=plt.gca()
     fig=plt.gcf()   
         
-    if SecondAxe and (Modeaff == 'ABScm') : # Parti double échelle mettre false pour avoir uniquement en cm^-1
+    if SecondAxe and (Modeaff == 'ABScm' or Modeaff == 'ABSnorm_min_max') : # Parti double échelle mettre false pour avoir uniquement en cm^-1
         fig.canvas.draw()
         ax2 = ax1.twiny()
         axmin, axmax = ax1.get_xlim()
@@ -230,7 +230,7 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
         ax2_labels = []
         ax2_labels.append(float('inf')) #créaction de la première tique manuelle sinon ça merde, division par 0
         for item in ax1.get_xticklabels()[1:]:
-        #for item in ax1.get_xticklabels():
+        # for item in ax1.get_xticklabels():
             l = 1/float(item.get_text())*1E7
             l = "{:3.0f}".format(l)
             ax2_labels.append(l)

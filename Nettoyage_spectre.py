@@ -17,7 +17,7 @@ from IPython import display
 
 from Lecture_input import Readspectre
 from Lecture_input import Corr2Str
-
+from Lecture_input import normYminmax
 
 def show_interactif_loop():
     '''
@@ -29,8 +29,8 @@ def show_interactif_loop():
     None.
 
     '''
-    display.clear_output(wait=True)
-    display.display(plt.gcf())
+    # display.clear_output(wait=True)
+    # display.display(plt.gcf())
     plt.show(block=True)
       
 def fit_OMCT(X, Y, NOM): 
@@ -149,8 +149,9 @@ def filtrage_gauss(X, Y, NOM, zoomfig ='auto', sigma=2):
     '''
     Cette fonction sert à débruité un signal avec un filtrage gaussien (convolution par une petite gausienne,
             ce qui équivaux dans l'espace de fourrier à une multiplication par une large gausienne')
-    ==> on élimine le bruit haute fréquence. EN TRAVAUX
-
+    ==> on élimine le bruit haute fréquence.
+    Ajout de Dongxin pour la selection de la zone à lisser.
+    
     Parameters
     ----------
     X : float
@@ -304,13 +305,13 @@ def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet
         limVIS = 14000; # 
         point_jonction = 11000;
     elif mode == 'PortableIR':
-        limIR= 9000;   # limite pour l'ajustement IR
-        limVIS = 11000; # 
+        limIR= 8000;   # limite pour l'ajustement IR
         limIR_haute = 10000;
-        limVIS_basse = 9500;
+        limVIS = 11000; # 
+        limVIS_basse = 9800;
         X = np.concatenate([X_IR, X_VIS]);
         Y = np.concatenate([Y_IR, Y_VIS]);
-        point_jonction = 10000;
+        point_jonction = 9800;
         
     elif mode == 'Portable UV':
         limVIS_bas= 9000;   # limite pour l'ajustement IR
@@ -333,7 +334,7 @@ def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet
     
     while True: # Selection de la zone d'interpolation
         
-        if mode == 'Perkin' or mode == 'PortableIR':
+        if mode == 'Perkin' :
             limIR=int(input('Rentrer la limite partie basse IR pour l ajustement (defaut ='
                                + str(limIR) +')\n') or limIR);
             limVIS=int(input('Rentrer la limite partie haute VIS pour l ajustement (defaut ='
@@ -342,15 +343,19 @@ def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet
             interpo_limIR = X_IR > limIR
             interpo_limVIS = X_VIS < limVIS 
 
-        if mode == 'PortableIR':
+        if mode == 'PortableIR' :
+             limIR=int(input('Rentrer la limite partie basse IR pour l ajustement (defaut ='
+                               + str(limIR) +')\n') or limIR);
              limIR_haute=int(input('Rentrer la limite partie HAUTE IR pour l ajustement (defaut ='
                            + str(limIR_haute) +')\n') or limIR_haute);
              limVIS_basse=int(input('Rentrer la limite partie BASSE VIS pour l ajustement (defaut ='
-                           + str(limVIS_basse) +')\n') or limVIS_basse);       
+                           + str(limVIS_basse) +')\n') or limVIS_basse);
+             limVIS=int(input('Rentrer la limite partie haute VIS pour l ajustement (defaut ='
+                               + str(limVIS) +')\n') or limVIS);
              interpo_limIR = np.logical_and(X_IR > limIR,  X_IR < limIR_haute)
              interpo_limVIS = np.logical_and(X_VIS < limVIS, X_VIS > limVIS_basse)
 
-        if mode == 'PortableUV':
+        if mode == 'PortableUV' :
              limUV_bas=int(input('Rentrer la limite partie basse UV pour l ajustement (defaut ='
                                + str(limUV_bas) +')\n') or limUV_bas);
              limUV_haut=int(input('Rentrer la limite partie haute UV pour l ajustement (defaut ='
@@ -377,24 +382,26 @@ def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet
                      + '1 pour oui et continuer la correction, 0 pour non et recommencer \n') or 1)) : break
     
     Remonte_OK=0;
-    Remonte = 1; # Par défaut fit linéaire
+    Remonte = 3; # Par défaut fit des deux côtés
     
     # On mets la premièrer partie de la courbe au niveau de la seconde,
     # car le Photomultiplicateur du visible donne un valeur "vrai" et on corrige l'InGaAs dessus
     
     Delta=np.mean(Y_VIS[:3])-np.mean(Y_IR[-3:]) # Decallage entre les deux courbe pour le cas 2
-    ordre_fit = 1
+    ordre_fit = 2
 
     while (Remonte_OK == 0):  #Partie ou on remonte la partie gauche (les IR) des données pour coller l'InGaAs sur le PM  
         
-        Remonte = int(input('Selectionner la methode de remonté de l\InGaAs sur le PM :\n 1 fit polynomiale\n'
+        Remonte = int(input('Selectionner la methode de remonté de l\InGaAs sur le PM :'+'(default'+str(Remonte)+')\n'
+                      +'\n 1 fit polynomiale à droite et moyenne 3 dernier point gauche\n'
                       +' 2 réhausser à la main\n'
-                      +' 3 fit des deux cotés du même ordre (ordre 0 = valeur moyenne) \n')
+                      +' 3 fit des deux cotés du même ordre (ordre 0 = valeur moyenne)\n')
                         or Remonte)
         
         if(Remonte == 1):
             try:                   
-                ordre_fit=float(input('rentrer l\'ordre du polynome qui va servir à ajuster la remontée\n') or ordre_fit)
+                ordre_fit=float(input('rentrer l\'ordre du polynome qui va servir à ajuster la remontée (default = '
+                                      +str(ordre_fit)+')\n') or ordre_fit)
     
                 fit_delta = np.polyfit(X_VIS[interpo_limVIS], Y_VIS[interpo_limVIS], ordre_fit) #fit pour remonter la courbe
                 
@@ -418,8 +425,9 @@ def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet
             
         elif(Remonte == 3) :
             try:
-                ordre_fit=float(input('rentrer l\'ordre du polynome qui va servir à ajuster la remontée\n') or ordre_fit)
-                
+                ordre_fit=float(input('rentrer l\'ordre du polynome qui va servir à ajuster la remontée (default = '
+                       +str(ordre_fit)+')\n') or ordre_fit)
+ 
                 if ordre_fit !=0:
                     point_jonction=float(input('Rentrer la valeur en X du point de jonction (default = '
                                                + str(point_jonction)+ ')\n') or point_jonction)
@@ -453,13 +461,13 @@ def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet
         plt.legend()
         show_interactif_loop()
         
-        Remonte_OK = int(input('La correction est-elle correcte ? \n') or 0)
+        Remonte_OK = int(input('La correction est-elle correcte ? \n') or 1)
  
     return (Y_IRDelta, interpo_limIR, interpo_limVIS)
 
 def reconstruction_saut(X_IR, Y_IRDelta, X_VIS, Y_VIS, interpo_limIR, interpo_limVIS, Xinterpo, X, Y, NOM):
     '''
-    Permet de reconstruire des données trops bruité et donc supprimés.
+    Permet de reconstruire des données trop bruitée et qui ont étés supprimées.
 
     Parameters
     ----------
@@ -536,7 +544,7 @@ def reconstruction_saut(X_IR, Y_IRDelta, X_VIS, Y_VIS, interpo_limIR, interpo_li
         plt.legend()
         show_interactif_loop()
         
-        if(int(input('L\'interpolation est-elle correcte ?\nO pour non, 1 pour oui\n') or 0)): break
+        if(int(input('L\'interpolation est-elle correcte ?\nO pour non, 1 pour oui\n') or 1)): break
     
     Ycorr=np.concatenate([Y_IRDelta, Yinterpo, Y_VIS])
     return(Ycorr)
@@ -711,13 +719,14 @@ def Recollage_portable(X_IR, Y_IRDelta, X_VIS, Y_VIS, interpo_limIR, interpo_lim
         Xcorr=Xcorr[INDEX]
         Ycorr=Ycorr[INDEX]
         
-        plt.figure(figsize=FIGsize, dpi=DPI)
-        plt.plot(Xcorr,Ycorr, label='Spectre joint')
-        plt.grid()
-        plt.legend()
-        show_interactif_loop()
+        # plt.figure(figsize=FIGsize, dpi=DPI)
+        # plt.plot(Xcorr,Ycorr, label='Spectre joint')
+        # plt.grid()
+        # plt.legend()
+        # show_interactif_loop()
             
-        Recol_OK = int(input('La jonction est-elle correcte ? \n') or 0)
+        # Recol_OK = int(input('La jonction est-elle correcte ? \n') or 0)
+        Recol_OK=True;
     return(Xcorr, Ycorr)
 
 def Traitement_spectro_portable(CHEMIN_IR, CHEMIN_VIS, NOM='pouet', Addition_Tr='0'):
@@ -747,12 +756,18 @@ def Traitement_spectro_portable(CHEMIN_IR, CHEMIN_VIS, NOM='pouet', Addition_Tr=
      
     FIGsize=(10,6)
     DPI=120
-
+    SHIFT_NIRQUEST=17 # décallage en nm entre le NIRQUEST et le PERKIN.
+    
     Trait_OK = False;
     
     
     Xnm_IR, Ytr_IR=Readspectre(CHEMIN_IR) # Lecture fichier IR
-
+    
+    Xnm_IR=Xnm_IR - SHIFT_NIRQUEST # On corrige le NIRQUEST d'un mauvaise calibration.
+    
+    if SHIFT_NIRQUEST:
+        print('ATTENTION PARTIE NIR DECALLER DE ' + str(SHIFT_NIRQUEST)+ ' NM')
+    
     X_IR = (1/(Xnm_IR*1E-7))[::-1]; #
     Y_IR = (- np.log10(Ytr_IR+Addition_Tr))[::-1];# Si data en %T
     
@@ -769,6 +784,7 @@ def Traitement_spectro_portable(CHEMIN_IR, CHEMIN_VIS, NOM='pouet', Addition_Tr=
     
     
     while not Trait_OK:
+        print(NOM)
         Y_IRDelta, interpo_limIR, interpo_limVIS = Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS,
                                                                     'PortableIR', X=0,Y=0,NOM=NOM)
        
@@ -783,7 +799,7 @@ def Traitement_spectro_portable(CHEMIN_IR, CHEMIN_VIS, NOM='pouet', Addition_Tr=
         plt.legend()
         show_interactif_loop()
             
-        Trait_OK = int(input('Le traitement final est-il correcte ? \n') or 0)
+        Trait_OK = int(input('Le traitement final est-il correcte ? \n') or 1)
         
         Xcorr = 1/(Xcorr*1E-7); # On repasse en nm
     return(Xcorr, Ycorr)
@@ -893,7 +909,7 @@ def Soustraction_interpolation(X1, Y1, X2, Y2):
     
     return(Xref, Y_diff)
 
-def Soustraction_norm(X1, Y1, X2, Y2):
+def Soustraction_norm(X1, Y1, X2, Y2, COUPUREminmax=[400, 2500]):
     '''
     Cette fonction soustrait deux jeux de données en les normalisant entre 0 et 1 et en les interpolants.
     Y2-Y1
@@ -914,11 +930,9 @@ def Soustraction_norm(X1, Y1, X2, Y2):
     None.
 
     '''
-    Y1=Y1-np.nanmin(Y1)
-    Y1=Y1/np.nanmax(Y1)
+    Y1 = normYminmax(X1, Y1, COUPUREminmax)
     
-    Y2=Y2-np.nanmin(Y2)
-    Y2=Y2/np.nanmax(Y2)
+    Y2 = normYminmax(X2, Y2, COUPUREminmax)
 
     return(Soustraction_interpolation(X1, Y1, X2, Y2))
 

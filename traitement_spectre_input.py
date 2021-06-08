@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 """
 @author: Théo Caroff
-Se code sert au traitement des spectre optiques dans le forme nm; Tr avec 2 ligne de texte avant les donénes.
-Placer le fichier input a la racine du repertoire contenant le dossier Data_brut contenant les spectres de la forme indiqué ci-dessus
+Se code sert au traitement des spectre optiques dans le forme nm; Tr avec 2 ligne de texte avant les données.
+Placer le fichier input a la racine du repertoire contenant le dossier Data_trait contenant les spectres de la forme indiqué ci-dessus
 Les fonction d'affichage sont dans Affichage_spectre.py
 Les fonction de traitement dans Nettoyage_spectre.py
+
 """
 #%%Chargement des modules et lecture du fichier contenant les paramètre exp
 import numpy as np
@@ -30,7 +31,7 @@ from Lecture_input import Chemin2input
 
 mode='input' # input, chemin, create_input
 
-TITRE='POUET' # Pour trier les spectres à afficher, si input_XXX.csv mettre TITRE=XXX et mode = input
+TITRE='' # Pour trier les spectres à afficher, si input_XXX.csv mettre TITRE=XXX et mode = input
 
 Recuperer_nom_dossier_temporaire=False;
 
@@ -48,16 +49,16 @@ elif mode == 'create_input':
 else :
     (Liste, Legende, Liste_ref, Correction, optplt, MarqueurCIE, Addition_Tr,
              valeurnorm, Liste_corr, TITRE) = Chemin2Liste(TITRE,
-             Recuperer_nom_dossier_temporaire,DOSSIER='Data_trait')
+             Recuperer_nom_dossier_temporaire, DOSSIER='Data_trait')
     
 CORRIGER=False;
 
 #%% Partie absorbance
 Modeaff='ABScm' # ABScm, ABSnm, ABSnorm_min_max, Reflectance, Transmittance, Epsilon, ABSnormep
-modecouleurs='manuel'; # 'auto', 'bigdata', 'manuel'
+modecouleurs='auto'; # 'auto', 'bigdata', 'manuel'
 
 
-Autoaxe     = True;
+Autoaxe     = False;
 SecondAxe   = True; #choix double échelle mettre false pour avoir uniquement en cm^-1
 
 CORRIGER    = CORRIGER
@@ -66,17 +67,25 @@ TITRE=TITRE
 
 X_min = nm2cm1(2500);
 X_max = nm2cm1(300);
-Y_min = -0.1;
-Y_max = 1.5;
+Y_min = -0.01;
+Y_max = 4;
 
-Addition_Tr=Addition_Tr
+
+Addition_Tr=0
 Addition_Tr=mono2tab(Addition_Tr, np.size(Liste))
 
 if Modeaff == 'Transmittance' or Modeaff=='ABSnm': # Si on se met en nm
     X_min = 300;
-    X_max = 1000;
+    X_max = 2500;
     Y_min = 0;
-    Y_max = 1;
+    Y_max = 4;
+    
+elif Modeaff == 'ABSnorm_min_max':
+    X_min = nm2cm1(2500);
+    X_max = nm2cm1(300);
+    Y_min = -0.1;
+    Y_max = 1.2;
+COUPURENORMminmax=[1000, 2500]
 
 if not (np.sum(Addition_Tr)== 0):
     RAJOUT =  RAJOUT + '_+tr_' + str(Addition_Tr[0])[2:]
@@ -90,7 +99,8 @@ else:
 
 Affichage_abs(Liste_aff, Legende, Autoaxe, [X_min, X_max], [Y_min,Y_max], SecondAxe,
               TITRE + RAJOUT, Addition_Tr, valeurnorm=valeurnorm, Modeaff=Modeaff,
-              modecouleurs=modecouleurs, optionplot=optplt, SHOW=True, COUPURENORMminmax=[400, 800])
+              modecouleurs=modecouleurs, optionplot=optplt, SHOW=True,
+              COUPURENORMminmax=COUPURENORMminmax)
 
 
 

@@ -74,7 +74,7 @@ def Corr2Str(Correction_number):
     
     return(Correction_NAME)
 
-def list_folder_filter(CLEFDETRIE='', CHEMIN='.', DOSSIER='Data_trait'):
+def list_folder_filter(CLEFDETRIE='', CHEMIN='.', DOSSIER='/Data_trait'):
     os.chdir(CHEMIN)
     CHEMIN = CHEMIN + os.sep + DOSSIER
     Liste = os.listdir(CHEMIN); #Récupère la liste des fichiers
@@ -87,13 +87,13 @@ def Chemin2input(TITRE, CLEFDETRIE='', CHEMIN='.', DOSSIER='Data_trait', mode='p
         CLEFDETRIE = '*'+TITRE+'*'
     
     if mode == 'portable':
-        Liste       = list_folder_filter(CLEFDETRIE+'*VIS*', CHEMIN, DOSSIER);
+        Liste       = list_folder_filter(CLEFDETRIE+'*VIS_*', CHEMIN, DOSSIER);
         Liste_ref   = list_folder_filter(CLEFDETRIE+'*NIR*', CHEMIN, DOSSIER);
         Legende     = [re.sub("_Transmission.*csv", '', x) for x in Liste]
         Correction  = 6;
         
     if mode == 'PERKIN':
-        Liste       = list_folder_filter(CLEFDETRIE+'*VIS*', CHEMIN, DOSSIER);
+        Liste       = list_folder_filter(CLEFDETRIE, CHEMIN, DOSSIER);
         Liste_ref   = mono2tab('', np.size(Liste))
         Legende     = [re.sub("Sample.*csv", '', x) for x in Liste]
         Correction  = 1
@@ -102,6 +102,7 @@ def Chemin2input(TITRE, CLEFDETRIE='', CHEMIN='.', DOSSIER='Data_trait', mode='p
     Liste_ref=['.'+os.sep + DOSSIER + os.sep + x for x in Liste_ref]
     
     taille=np.size(Liste)
+
     
     df = pd.DataFrame(dict(Nom_fichier=Liste,
                       Legende       = Legende,
@@ -149,17 +150,18 @@ def Chemin2Liste(TITRE, Recuperer_nom_dossier_temporaire=False, CLEFDETRIE='', C
     '''
     if CLEFDETRIE== '' : 
         CLEFDETRIE = '*'+TITRE+'*'
-    
+ 
     if Recuperer_nom_dossier_temporaire:
         repspectro = open(tempfile.gettempdir()+os.sep+'repspectro', 'r');
-        folder = repspectro.read();
+        RACINE = repspectro.read();
         repspectro.close();
 
+
     else:
-        folder = CHEMIN
-        #folder = askdirectory()
+        RACINE = CHEMIN
+        #RACINE = askdirectory()
     
-    Liste = list_folder_filter(CLEFDETRIE, CHEMIN, folder);
+    Liste = list_folder_filter(CLEFDETRIE, RACINE, DOSSIER);
     
     Legende=[x[:-4] for x in Liste]
     
@@ -203,6 +205,7 @@ def readinput(INPUTNAME='input.csv', mode='numpy', concentrationinput='none'):
             print("INPUT PAS UNICODE")
             Data = np.genfromtxt(INPUTNAME, comments='#', skip_header=1, delimiter=';', dtype='str', encoding='latin-1');
     # Récupération des données de base du fichier d'input
+        #print(Data)
         Liste = (Data[:, 0].tolist())
         Legende = (Data[:, 1])
         Liste_ref = Data[:, 2]; # Chemin de la référence, si vide le fichier à déja été traiter
@@ -360,3 +363,27 @@ def natural_sort(l):#Fonction qui sert à trier dans l'ordre naturel (ou humain)
 
 def nm2cm1(X):
     return(1/(X*1E-7))
+
+def normYminmax(X, Y, COUPURENORMminmax=[400, 2500]):
+    '''
+    Cette fonction normalise entre 0 et 1 le jeu de donnés Y dans la gamme des X compris dans la liste COUPURENORMminmax.
+    
+
+    Parameters
+    ----------
+    X : TYPE
+        DESCRIPTION.
+    Y : TYPE
+        DESCRIPTION.
+    COUPURENORMminmax : TYPE, optional
+        DESCRIPTION. The default is [400, 2500].
+
+    Returns
+    -------
+    None.
+
+    '''
+    INDEX = np.logical_and(X>COUPURENORMminmax[0], X<COUPURENORMminmax[1])             
+    Y = Y - np.min(Y[INDEX])
+    Y = Y/np.max(Y[INDEX])
+    return(Y)

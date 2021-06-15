@@ -18,9 +18,12 @@ from matplotlib import pyplot as plt
 
 from Affichage_spectre import Affichage_abs
 from Affichage_spectre import AffichageCIE1931
-from Affichage_spectre import plt_BeerLambert_xy
-from Affichage_spectre import Affichage_Lab
+from Affichage_spectre import Affichage_Lab2D
 from Affichage_spectre import mono2tab
+from Affichage_spectre import Courbe_BeerLambert_XY
+from Affichage_spectre import Calcul_BeerLambert_XYZ
+from Affichage_spectre import Courbe_BeerLambert_Lab3D
+from Affichage_spectre import Affichage_Lab3D
 
 from Nettoyage_spectre import Nettoyage_spectre
 
@@ -31,7 +34,9 @@ from Lecture_input import Chemin2input
 
 mode='input' # input, chemin, create_input
 
-TITRE='' # Pour trier les spectres à afficher, si input_XXX.csv mettre TITRE=XXX et mode = input
+TITRE='CDV_Bleu_[A-F]' # Pour trier les spectres à afficher, si input_XXX.csv mettre TITRE=XXX et mode = input
+
+TITRE = 'bleu_sat'
 
 Recuperer_nom_dossier_temporaire=False;
 
@@ -44,18 +49,18 @@ if mode == 'input' :
              valeurnorm, Liste_corr, TITRE) = readinput(INPUTNAME, mode='numpy',
                                                         concentrationinput='epaisseur')
 elif mode == 'create_input':
-    Chemin2input(TITRE, DOSSIER='Data_trait')
+    Chemin2input(TITRE, CLEFDETRIE='*', DOSSIER='Data_trait', mode='PERKIN')
     
 else :
     (Liste, Legende, Liste_ref, Correction, optplt, MarqueurCIE, Addition_Tr,
              valeurnorm, Liste_corr, TITRE) = Chemin2Liste(TITRE,
              Recuperer_nom_dossier_temporaire, DOSSIER='Data_trait')
     
-CORRIGER=False;
+CORRIGER=True;
 
 #%% Partie absorbance
-Modeaff='ABScm' # ABScm, ABSnm, ABSnorm_min_max, Reflectance, Transmittance, Epsilon, ABSnormep
-modecouleurs='auto'; # 'auto', 'bigdata', 'manuel'
+Modeaff='ABScm' # ABScm, ABSnm, ABSnorm_min_max, SubBaseline, Reflectance, Transmittance, Epsilon, ABSnormep
+modecouleurs='bigdata'; # 'auto', 'bigdata', 'manuel'
 
 
 Autoaxe     = False;
@@ -80,12 +85,13 @@ if Modeaff == 'Transmittance' or Modeaff=='ABSnm': # Si on se met en nm
     Y_min = 0;
     Y_max = 4;
     
-elif Modeaff == 'ABSnorm_min_max':
+elif Modeaff == 'ABSnorm_min_max' or Modeaff == 'SubBaseline':
+    Autoaxe     = False;
     X_min = nm2cm1(2500);
-    X_max = nm2cm1(300);
+    X_max = nm2cm1(333);
     Y_min = -0.1;
     Y_max = 1.2;
-COUPURENORMminmax=[1000, 2500]
+COUPURENORMminmax=[400, 800]
 
 if not (np.sum(Addition_Tr)== 0):
     RAJOUT =  RAJOUT + '_+tr_' + str(Addition_Tr[0])[2:]
@@ -115,10 +121,13 @@ CORRIGER=True
 x, y = AffichageCIE1931(Liste_corr, Legende, TITRE, Marqueur=MarqueurCIE,Fleche=False,
                         xylim=[0, 0.33, 0, 0.33], show=False)
 
-Fichierref='/media/veracrypt1/These_principal/Manip/Test_CIE/Effet_lc_3311XX/Beer_lambert_Bleu_3311.csv'
-
-plt_BeerLambert_xy(Fichierref, 'lc Co2+ pur', optionplot='', show='True', TITRE=TITRE)
+Courbe_BeerLambert_XY(Liste_corr[0], show=False)
+Courbe_BeerLambert_XY(Liste_corr[3], show=True)
 
 #%% Affichage Lab
-Lab = Affichage_Lab(Liste_corr, Legende, TITRE, MarqueurCIE)
 
+Lab = Affichage_Lab2D(Liste_corr, Legende, TITRE, MarqueurCIE)
+
+Affichage_Lab3D(Liste, Legende, TITRE, SHOW=False)
+
+Courbe_BeerLambert_Lab3D(Liste_corr[1])

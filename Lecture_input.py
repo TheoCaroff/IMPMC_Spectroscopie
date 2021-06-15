@@ -61,8 +61,8 @@ def Corr2Str(Correction_number):
         Correction_NAME = '_ABScm.csv'
     
     elif Correction_number == 8:
-        Correction_NAME = '_cor_DO.csv'
-
+        #Correction_NAME = '_cor_DO.csv'
+        Correction_NAME = 'corr.csv'
     elif Correction_number == 9:
         Correction_NAME = '_soustrait_norm.csv'
 

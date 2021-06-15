@@ -4,6 +4,7 @@ Created on Tue Mar 10 18:51:51 2020
 
 @author: Theo_C
 Ce fichier contient toutes les chose utiles pour tracer et traiter les spectres
+Les fonctions colorimétrique on été faites par DUNE ANDRE et l'affichage LAB3D par TANYA ASSERAF'
 """
 
 import numpy as np
@@ -15,6 +16,7 @@ from scipy import interpolate
 from Lecture_input import mono2tab
 from Lecture_input import Readspectre
 from Lecture_input import normYminmax
+from Nettoyage_spectre import baseline_Rubberband
 
 try :
     import colour
@@ -146,51 +148,51 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
         
         Xnm, Ytr = Readspectre(Fichier)
         Ytr= Ytr + AdditionTr[i]
-        
+        X = 1/(Xnm*1E-7);
+        Y = -np.log10(Ytr);
+        plt.xlabel("Nombre d'onde ($cm^{-1}$)");
+        plt.ylabel('Absorbance')
+            
         if Modeaff == 'ABScm':
-            X = 1/(Xnm*1E-7);
-            Y = -np.log10(Ytr);
-            plt.xlabel("Nombre d'onde ($cm^{-1}$)");
-            plt.ylabel('Absorbance')
             RAJOUT= ''
         
         elif Modeaff == 'ABSnm':
             X = Xnm;
-            Y = -np.log10(Ytr);
             plt.xlabel("Longueur d'onde (en nm)");
-            plt.ylabel('Absorbance')
             RAJOUT= '_ABSnm'
         
         elif Modeaff == 'ABSnorm_min_max':
-            X = 1/(Xnm*1E-7);
-            Y = - np.log10(Ytr);
             Y = normYminmax(Xnm, Y, COUPURENORMminmax)
-            plt.xlabel("Nombre d'onde ($cm^{-1}$)");
             plt.ylabel('Absorbance normalisé (u.a)')
             RAJOUT = '_normminmax'
             
         elif Modeaff == 'Reflectance':
-            X = 1/(Xnm*1E-7);
             Y = 1-Ytr;
-            plt.xlabel("Nombre d'onde ($cm^{-1}$)");
             plt.ylabel('Reflectance')
             RAJOUT = '_Reflexion'
        
         elif Modeaff == 'ABSnormep':
-            X = 1/(Xnm*1E-7);
-            Y = -np.log10(Ytr);
             Y = Y/valeurnorm[i];
-            plt.xlabel("Nombre d'onde ($cm^{-1}$)");
             plt.ylabel('Absorbance normalisée ($cm^{-1}$)') 
             RAJOUT = '_norm_ep'
         
         elif Modeaff == 'Epsilon':
-            X = 1/(Xnm*1E-7);
-            Y = -np.log10(Ytr)/valeurnorm[i];
-            plt.xlabel("Nombre d'onde ($cm^{-1}$)");
+            Y = Y/valeurnorm[i];
             plt.ylabel('$\\varepsilon (L.mol^{-1}.cm^{-1})$') 
             RAJOUT = '_Epsilon'
         
+        elif Modeaff == 'SubBaseline':
+            INDEXUV=Xnm>360
+            X=X[INDEXUV]
+            Y=Y[INDEXUV]
+            
+            baseline=baseline_Rubberband(X, Y)
+            Y=Y-baseline
+            
+            Y = normYminmax(Xnm[INDEXUV], Y, COUPURENORMminmax)
+            plt.ylabel('Absorbance normalisé soustrait ligne de base Rubberband (u.a)')
+            RAJOUT = '_subRubber_norminmax'
+            
         else:
             X = Xnm;
             Y = Ytr;
@@ -199,20 +201,21 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
             RAJOUT = '_Tr'
         
         if modecouleurs == 'auto':
-            plt.plot(X, Y, linewidth=linewidth)
+            plt.plot(X, Y, linewidth=linewidth, label=Legende[i])
         
         elif modecouleurs == 'bigdata':
-            plt.plot(X, Y, color=colorsbigdata[i], linewidth=linewidth)
+            plt.plot(X, Y, color=colorsbigdata[i], linewidth=linewidth, label=Legende[i])
             
         elif modecouleurs == 'manuel':
             if  optionplot[i] == '':
-                plt.plot(X, Y, linewidth=linewidth)
+                plt.plot(X, Y, linewidth=linewidth, label=Legende[i])
             else:
-                plt.plot(X, Y, optionplot[i], linewidth=linewidth)
+                plt.plot(X, Y, optionplot[i], linewidth=linewidth, label=Legende[i])
             
     #plt.legend(Legende, loc="upper left");
     #plt.legend(Legende, bbox_to_anchor = [0.5, 0.2])
-    plt.legend(Legende);
+    plt.legend()
+    #plt.legend(Legende);
     
     TITRE=TITRE+RAJOUT
     
@@ -256,6 +259,10 @@ def Calcul_XYZ(Liste, Legende):
         Fichier=Liste[i]
 
         Xnm, Ytr = Readspectre(Fichier)
+        INDEX=~np.isnan(Ytr) # supression des nan
+        Ytr=Ytr[INDEX]
+        Xnm=Xnm[INDEX]
+        
         nm=np.arange(int(np.min(Xnm))+1 , int(np.max(Xnm))-1) # Création des valeur en nm à interpoler (pas de 1, 5, 10 ou 20 nm)
         
         fsample = interpolate.interp1d(Xnm, Ytr) # On interpole le fichier pour avoir des valeur espacée de 1nm  (norme CIE)
@@ -275,7 +282,7 @@ def Calcul_XYZ(Liste, Legende):
     return(XYZ)
     
 def AffichageCIE1931(Liste, Legende, TITRE='CIE1931', Marqueur='', Fleche=True,
-                         xylim=[-0.1, 0.8, 0, 1], show='True'):
+                         xylim=[-0.1, 0.8, 0, 1], show=True):
     '''
     Cette fonction sert à déterminer les coordonnées colorimétrique des spectres et les affichers sur le diagrame xyY
     Il se base sur le module colour science
@@ -350,48 +357,28 @@ def AffichageCIE1931(Liste, Legende, TITRE='CIE1931', Marqueur='', Fleche=True,
     return(xtable, ytable)
 
 
-
-def plt_BeerLambert_xy(Fichier, Legende, optionplot='', show='True', TITRE='CIE1931'):
+def Affichage_Lab2D(Liste, Legende, TITRE='Lab', Marqueur='', SHOW=True):
     '''
-    
+    Cette fonction sert à afficher des LAB sur deux graph 2D
 
     Parameters
     ----------
-    Fichier : string
-        Chemin vers le data à afficher.
+    Liste : TYPE
+        DESCRIPTION.
     Legende : TYPE
         DESCRIPTION.
-    optionplot : TYPE, optional
-        DESCRIPTION. The default is ''.
-    show : TYPE, optional
-        DESCRIPTION. The default is 'True'.
     TITRE : TYPE, optional
-        DESCRIPTION. The default is 'CIE1931'.
+        DESCRIPTION. The default is 'Lab'.
+    Marqueur : TYPE, optional
+        DESCRIPTION. The default is ''.
+    SHOW : TYPE, optional
+        DESCRIPTION. The default is 'True'.
 
     Returns
     -------
     None.
 
     '''
-    
-    if TITRE == 'CIE1931':
-        pass
-    else:
-        TITRE = TITRE + '_CIE1931'
-
-    x, y = Readspectre(Fichier)
-    
-    if optionplot == '':
-        plt.plot(x,y, '--', label=Legende)
-    else:
-        plt.plot(x,y, optionplot, label=Legende)
-    
-    plt.legend()
-    
-    if show : Sav_fig(TITRE, colorplot=True);
-
-def Affichage_Lab(Liste, Legende, TITRE='Lab', Marqueur='', SHOW='True'):
-    
     FIGSIZE=(5,5)
     DPI=120
     Marqueur=mono2tab(Marqueur, np.size(Liste))    
@@ -436,8 +423,260 @@ def Affichage_Lab(Liste, Legende, TITRE='Lab', Marqueur='', SHOW='True'):
     if SHOW : Sav_fig(TITRE)
     return(Lab_liste)
         
+
+def Affichage_Lab3D(Liste, Legende, TITRE='Lab', Marqueur='', SHOW=True):
+    '''
+    Cette fonction afficer les LAB sur un graph 3D des fichier dans LISTE.
+
+    Parameters
+    ----------
+    Liste : TYPE
+        DESCRIPTION.
+    Legende : TYPE
+        DESCRIPTION.
+    TITRE : TYPE, optional
+        DESCRIPTION. The default is 'Lab'.
+    Marqueur : TYPE, optional
+        DESCRIPTION. The default is ''.
+    SHOW : TYPE, optional
+        DESCRIPTION. The default is 'True'.
+
+    Returns
+    -------
+    None.
+
+    '''
+    
+    FIGSIZE=(5,5)
+    DPI=120
+    Marqueur=mono2tab(Marqueur, np.size(Liste))    
+
+    tristimulus=Calcul_XYZ(Liste, Legende)
+    Lab_liste=[]
+    
+    if TITRE == 'Lab3D':
+        pass
+    else:
+        TITRE = TITRE + '_Lab3D'
+
+    
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    
+        
+    for i in np.arange(0, np.size(Liste)):
+        XYZ=tristimulus[i]
+        
+        Lab=colour.XYZ_to_Lab(XYZ);
+        Lab_liste.append(Lab)
+        
+        x=Lab[1]
+        y=Lab[2]
+        z=Lab[0]
+        ax.scatter(x, y, z, label=Legende[i])
+                
+    ax.set_xlabel('a')
+    ax.set_ylabel('b')
+    ax.set_zlabel('L')
+    ax.set_xlim([-300, 300])
+    ax.set_ylim([-300, 300])
+    ax.set_zlim([-350,350])
+ 
+    #fig.tight_layout()
+    if SHOW : Sav_fig(TITRE)
+    return(Lab_liste)
+
+def Calcul_BeerLambert_XYZ(Fichier, coeflim=[0.1, 5]):
+    '''
+    Cette fonction calcule l'évolution des paramètres XYZ en faisant varier le paramètre
+    lc dans la loi de Beer-Lambert pour un spectre donné.
+    
+
+    Parameters
+    ----------
+    Fichier : string
+        Chemin vers le fichier contenant les données du spectre.
+    coeflim : liste de float, optional
+        Valeurs minimale et maximale des paramètres lc. The default is [0.1, 5].
+
+    Returns
+    -------
+    Paramètres XYZ, Légende, XYZ du spectre donné.
+
+    '''
+    Xnm, T =Readspectre(Fichier)
+
+    INDEX=~np.isnan(T) # supression des nan
+    T=T[INDEX]
+    Xnm=Xnm[INDEX]
+    
+    # A = -np.log10(T)
+    # A = A - np.min(A)
+    # T = np.power(10, -A) #Niveau à 0
+   
+    coef = np.arange(coeflim[0], coeflim[1], 0.1)
+    XYZ=np.ones((np.size(coef), 3))
+
+    i=0
+    Legende=[]
+    
+    for coef in coef:
+        # print(coef)
+        Legende.append('x'+str(coef))
+    
+        Ytr=np.power(T, coef)
+    
+        nm=np.arange(int(np.min(Xnm))+1 , int(np.max(Xnm))-1) # Création des valeur en nm à interpoler (pas de 1, 5, 10 ou 20 nm)
+        
+        fsample = interpolate.interp1d(Xnm, Ytr) # On interpole le fichier pour avoir des valeur espacée de 1nm  (norme CIE)
+        Tsample = np.nan_to_num(fsample(nm));
+        
+        Data_dict={}
+        for compteur in range(np.size(nm)): Data_dict[nm[compteur]] = Tsample[compteur] # Mise des données sous forme de dictionnaire pour utilisation avec le module Colour
+
+        sd = colour.SpectralDistribution(Data_dict, name=Legende[i]) # Créaction de l'objet densité spectral sample
+        cmfs = colour.colorimetry.MSDS_CMFS_STANDARD_OBSERVER['CIE 1931 2 Degree Standard Observer'] # Réfence pour le calcul tu trimultus
+        illuminant = colour.SDS_ILLUMINANTS['D65']
+        
+        XYZ[i] = colour.sd_to_XYZ(sd, cmfs, illuminant)
+        
+        if coef==1: ref_XYZ=XYZ[i]
+
+        i+=1
+        
+    return(XYZ, Legende, ref_XYZ)
+    
+    
+def Courbe_BeerLambert_XY(Fichier, TITRE='CIE1931', fondCIE=False,
+                          xylim=[-0.1, 0.8, -0.1, 1], lc_lim=[0.1, 5], show=True):
+    '''
+    Cette fonction trace la courbe de Beer-Lambert en coordonnées colorimétriques xy 
+    (i.e. évolution des coordonnées x et y avec le paramètre lc) à partir d'un spectre donné.
+
+    Parameters
+    ----------
+    Fichier : string
+        Chemin vers le fichier contenant les données du spectre.
+    TITRE : string, optional
+        Titre du graphique sauvegardé. The default is 'CIE1931'.
+    fondCIE : Bool, optional
+        Si vrai, affiche le fond CIE1931. The default is False.
+    xylim : liste, optional
+        Bornes du fond CIE1931. The default is [-0.1, 0.8, -0.1, 1].
+    lc_lim : liste, optional
+        Valeurs minimale et maximale du paramètre lc. The default is [0.1, 5].
+    show : Bool, optional
+        Si vrai, sauvegarde et affiche le graphique. The default is True.
+
+    Returns
+    -------
+    L'ensemble des coordonnées x et y.
+
+    '''
+    xtable=[]
+    ytable=[]  
+    (cheminfichier, nomfichier) = os.path.split(Fichier)
+    Verre= nomfichier[:-19]
+    
+    if TITRE == 'CIE1931':
+        pass
+    else:
+        TITRE = TITRE + '_CIE1931'
+
+    XYZ, Legende ,ref_XYZ = Calcul_BeerLambert_XYZ(Fichier, coeflim=lc_lim)
+
+
+    if fondCIE:
+        cplot.plot_chromaticity_diagram_CIE1931(standalone=False, bounding_box=xylim, x_tighten=True,
+                                                y_tighten=True)
+        ref_x, ref_y = colour.XYZ_to_xy(ref_XYZ)    
+        plt.plot(ref_x,ref_y,'x',label=Verre)
+    
+    else:
+        pass
+    
+    for i in np.arange(0,np.size(XYZ, 0)):                
+        x, y =  colour.XYZ_to_xy(XYZ[i]) # passage en xyY pour le diagramme fer à Cheval CIE1931
+        xtable.append(x)
+        ytable.append(y)
+        
+
+    plt.plot(xtable, ytable, label='Effet lc ' + Verre)
+
+    plt.legend()
+
+    if show: Sav_fig(TITRE, colorplot=True)
+       
+    return(xtable, ytable)
+    
+    
+def Courbe_BeerLambert_Lab3D(Fichier, TITRE='Lab', lc_lim=[0.1, 5], show=True, newfig=False):
+    '''
+    Cette fonction trace la courbe 3D de Beer-Lambert en coordonnées colorimétriques Lab
+    (i.e. évolution des coordonnées Lab avec le paramètre lc) à partir d'un spectre donné.
+
+    Parameters
+    ----------
+    Fichier : string
+        Chemin vers le fichier contenant les données du spectre.
+    TITRE : string, optional
+        Titre du graphique sauvegardé. The default is 'Lab'.
+    lc_lim : liste, optional
+        Valeurs minimale et maximale du paramètre lc. The default is [0.1, 5].
+    show : Bool, optional
+        Si vrai, sauvegarde et affiche le graphique. The default is True.
+
+    Returns
+    -------
+    L'ensemble des valeurs des coordonnées Lab.
+
+    '''
+    
+    (cheminfichier, nomfichier) = os.path.split(Fichier)
+    Verre= nomfichier[:-19]
+    
+    XYZ,Legende,ref_XYZ=Calcul_BeerLambert_XYZ(Fichier, coeflim=lc_lim)
+    
+    if newfig:
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        Ref= colour.XYZ_to_Lab(ref_XYZ)
+        ref_x = Ref[1]
+        ref_y = Ref[2]
+        ref_z = Ref[0]
+        ax.scatter(ref_x, ref_y, ref_z, marker='x', label=Verre)
+        ax.set_xlabel('a')
+        ax.set_ylabel('b')
+        ax.set_zlabel('L')
+        ax.set_xlim([-350, 350])
+        ax.set_ylim([-350, 350])
+        ax.set_zlim([-350, 350])
         
         
+    x=[]
+    y=[]
+    z=[]
+    
+    if TITRE == 'Lab3D':
+        pass
+    else:
+        TITRE = TITRE + '_Lab3D'
+
+    for i in np.arange(0,np.size(XYZ, 0)):                
+        Lab =  colour.XYZ_to_Lab(XYZ[i]) # passage en xyY pour le diagramme fer à Cheval CIE1931
+        x.append(Lab[1])
+        y.append(Lab[2])
+        z.append(Lab[0]) 
+    
+    plt.plot(x,y,z, label='Effet lc ' + Verre)
+
+    plt.legend()
+ 
+
+    if show : Sav_fig(TITRE)
+    return(x,y,z)  
+  
+
         
         
         

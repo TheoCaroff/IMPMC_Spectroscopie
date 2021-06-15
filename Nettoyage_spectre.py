@@ -9,15 +9,18 @@ Created on Wed Mar 11 11:17:45 2020
 import numpy as np
 import os
 
+
 from matplotlib import pyplot as plt
 from scipy.optimize import curve_fit
 from scipy.ndimage import gaussian_filter1d
+from scipy.spatial import ConvexHull
 from scipy import interpolate
 from IPython import display
 
 from Lecture_input import Readspectre
 from Lecture_input import Corr2Str
 from Lecture_input import normYminmax
+
 
 def show_interactif_loop():
     '''
@@ -29,10 +32,27 @@ def show_interactif_loop():
     None.
 
     '''
-    # display.clear_output(wait=True)
-    # display.display(plt.gcf())
+    display.clear_output(wait=True)
+    display.display(plt.gcf())
     plt.show(block=True)
-      
+
+def baseline_Rubberband(X, Y): # Basé sur la méthode de rubberband (voir package hyperspectra pour R)
+    # Find the convex hull$
+    INDEXrub=~np.isnan(Y)
+    X=X[INDEXrub]
+    Y=Y[INDEXrub]
+    
+    array=np.concatenate((X[np.newaxis,:], Y[np.newaxis,:])).transpose()
+    v = ConvexHull(array).vertices
+    # Rotate convex hull vertices until they start from the lowest one
+    v = np.roll(v, -v.argmin())
+    # Leave only the ascending part
+    v = v[:v.argmax()]
+
+    # Create baseline using linear interpolation between vertices
+    return (np.interp(X, X[v], Y[v]))
+
+
 def fit_OMCT(X, Y, NOM): 
     '''
     Cette fonction sert à fiter un Gausienne
@@ -110,8 +130,8 @@ def fit_OMCT(X, Y, NOM):
             Y_corr=Y_ori-Y_fit;
             plt.plot(X_ori,Y_ori,label='Origine')
             plt.plot(X_ori, Y_corr, '--', label='corrigé')
-            plt.xlim(4000, 31000);
-            plt.ylim(-0.1, 1)
+            plt.xlim(4000, 33000);
+            plt.ylim(-0.1, 2)
             plt.legend();
             plt.grid();
             show_interactif_loop()
@@ -141,8 +161,14 @@ def fit_OMCT(X, Y, NOM):
                                  str(Locali_fit) + 'cm-1)\n') or Locali_fit);
         Sigma_fit = float(input('Valeur sigma gauss (default = '+
                                  str(Sigma_fit) + 'cm-1 )\n') or Sigma_fit);
+        Shift_fit = float(input('Valeur constance (default = '+
+                                 str(Shift_fit) + 'cm-1 )\n') or Shift_fit);
+        
     #return(Y_corr-Y_min) # On récupère la valeur minmum pour bien assoir la ligne de base 
     #! pas de sens physique, valeur de correction de reflexion à mesure
+    print("Paramètre de fit  : ")
+    print(pop)
+    
     return(Y_corr) #On retourne le spectre corrigé
 
 def filtrage_gauss(X, Y, NOM, zoomfig ='auto', sigma=2):
@@ -945,7 +971,8 @@ def SavCSV(X, Y, NOM, Legende, Dossier='./Data_corr', ENTETE='\n X en nm; Y en %
     
     HEADER =NOM+ ';' +Legende + ENTETE
     
-    Save=np.array([X, Y]).transpose() # On met sous la forme XY en colonne.
+    Save=np.array([X, Y]).transpose() # On met sous la forme XY en colonne. DEPRECIER ?
+    #Save=np.concatenate((X[np.newaxis,:], Y[np.newaxis,:])).transpose() à vérifier la fiabilité
     np.savetxt(Dossier+os.sep+NOM, Save, delimiter=';', header=HEADER, comments='');
       
 
@@ -968,6 +995,8 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Addition_Tr=0):
         5 pour passer une fichier d'ABS en Tr
         6 pour joindre les spectres issu du spectro portable
         7 pour sauvegarder les spectres en ABS et cm^-1
+        8 pour additionner un spectre en absorbance
+        9 pour soustraitre deux spectre normalisé et interpollé
     Addition_Tr : float
         Valeur ajouté à la transmittance en cas de valeurs trop basse qui donne des nan suite au log
     Raises
@@ -1055,7 +1084,8 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Addition_Tr=0):
                 Xnm_ref, Ytr_ref=Readspectre(Liste_ref[i])
                 REF = -np.log10(Ytr_ref)
 
-                Y_corr=Y+REF
+                Y_corr=Y+2
+                #Y_corr=Y+REF
                 Fichier_corr=nomfichier[0:-4] + Corr2Str(correction[i])
             
             elif(correction[i] == 9): # Soustration normalisée

@@ -9,13 +9,17 @@ Les fonctions colorimétrique on été faites par DUNE ANDRE et l'affichage LAB3
 
 import numpy as np
 import os
+import matplotlib
 from matplotlib import pyplot as plt
+from matplotlib import ticker as ticker
 from scipy import interpolate
 
 
 from Lecture_input import mono2tab
 from Lecture_input import Readspectre
 from Lecture_input import normYminmax
+from Lecture_input import nm2cm1
+
 from Nettoyage_spectre import baseline_Rubberband
 
 try :
@@ -25,7 +29,7 @@ except ModuleNotFoundError :
     print('ATTENTION MODULE COLOR-SCIENCE PAS INSTALLER')
 
 
-def set_graph(FIGSIZE=[12, 6], DPI = 120, grid=True):
+def set_graph(FIGSIZE=[15, 10], DPI = 120, grid=True, mode='default', xylim=[-0.1, 0.8, 0, 1]):
     '''
     Paramètre la figure qui va servir à afficher les spectres
 
@@ -45,9 +49,17 @@ def set_graph(FIGSIZE=[12, 6], DPI = 120, grid=True):
     '''
     plt.style.use({'figure.figsize': FIGSIZE, 'figure.dpi': DPI})
 #   plt.figure(figsize=(FIGSIZE), dpi=DPI)
-    plt.figure()
-    plt.grid(grid);
-    plt.subplots_adjust(left=0.05, bottom=0.1, right=0.95, top=0.9, wspace=0.1, hspace=0.1)
+    if mode == 'default':
+        plt.figure()
+        plt.grid(grid);
+    elif mode == 'CIE1931':
+        # Plotting the *CIE 1931 Chromaticity Diagram*.
+        # The argument *standalone=False* is passed so that the plot doesn't get
+        # displayed and can be used as a basis for other plots.
+        cplot.plot_chromaticity_diagram_CIE1931(standalone=False,
+                                                bounding_box=xylim, x_tighten=True, y_tighten=True)
+    
+    plt.subplots_adjust(left=0.05, bottom=0.1, right=0.95, top=0.9, wspace=0, hspace=0)
 
 
 def Sav_fig(Titre='Pouet', Repertoire='Graph', colorplot=False):
@@ -83,7 +95,7 @@ def Sav_fig(Titre='Pouet', Repertoire='Graph', colorplot=False):
 def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5],
                   SecondAxe=True, TITRE='superposition', AdditionTr=0,
                   linewidth=1.5, valeurnorm=1, Modeaff='ABScm', modecouleurs='auto', optionplot='',
-                  SHOW=True, COUPURENORMminmax=[400, 2500]):
+                  SHOW=True, COUPURENORMminmax=[400, 2500], newgraph=True, SpectreVIS=True):
     '''
     Cette fonction affiche des spectes optique obtenu en %T en absorbance et
     sauvegarde le graph dans un dossier graph placé dans le repertoire courant
@@ -120,9 +132,11 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
         Choix des options des matplolib à utiliser en mode manuel
     SHOW : Bool, optional
         Pour afficher et sauvergarder la figure. The default is True.
+    SpectreVIS = Bool, optional
+        Pour afficher le spectre visible. The default is True.
     Returns
     -------
-    None.
+    La figure courante
 
     '''
     
@@ -132,7 +146,7 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
     AdditionTr=mono2tab(AdditionTr, np.size(Liste))
     valeurnorm=mono2tab(valeurnorm, np.size(Liste))
     
-    set_graph() # Cf fonction, on créer la figure à la bonne taille/résolution
+    if newgraph : set_graph() # Cf fonction, on créer la figure à la bonne taille/résolution
 
     colorsbigdata = plt.cm.nipy_spectral(np.linspace(0,1,np.size(Liste))) # On fixe la gamme de couleur utilisé
 
@@ -180,19 +194,29 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
             Y = Y/valeurnorm[i];
             plt.ylabel('$\\varepsilon (L.mol^{-1}.cm^{-1})$') 
             RAJOUT = '_Epsilon'
+            
+        elif Modeaff == 'ABSnorm_min_ep':
+            Y = Y/valeurnorm[i];
+            Y=Y-np.min(Y)
+            plt.ylabel('Absorbance normalisé (u.a)')
+            RAJOUT = '_normmin_ep'
         
         elif Modeaff == 'SubBaseline':
-            INDEXUV=Xnm>360
+            INDEXUV=Xnm>280
             X=X[INDEXUV]
             Y=Y[INDEXUV]
             
-            baseline=baseline_Rubberband(X, Y)
+            Xbaseline, Ybaseline = baseline_Rubberband(X, Y)
+            baseline=np.interp(X, Xbaseline, Ybaseline)
             Y=Y-baseline
+            # #Y=baseline
+            # Y = Y/valeurnorm[i];
+            # RAJOUT = '_subRubber_normep'
+
+            #Y = normYminmax(Xnm[INDEXUV], Y, COUPURENORMminmax)  
+            RAJOUT = '_subRubber'
             
-            Y = normYminmax(Xnm[INDEXUV], Y, COUPURENORMminmax)
-            plt.ylabel('Absorbance normalisé soustrait ligne de base Rubberband (u.a)')
-            RAJOUT = '_subRubber_norminmax'
-            
+            plt.ylabel('Absorbance normalisé (u.a)')# à l''épaisseur soustrait ligne de base Rubberband (u.a)')
         else:
             X = Xnm;
             Y = Ytr;
@@ -215,33 +239,71 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
     #plt.legend(Legende, loc="upper left");
     #plt.legend(Legende, bbox_to_anchor = [0.5, 0.2])
     plt.legend()
-    #plt.legend(Legende);
     
     TITRE=TITRE+RAJOUT
     
     
     ax1=plt.gca()
     fig=plt.gcf()   
+    ax1.xaxis.set_minor_locator(ticker.AutoMinorLocator())
+
+    
+    if SecondAxe and not (Modeaff == 'ABSnm' or Modeaff == 'Transmittance') : # Parti double échelle mettre false pour avoir uniquement en cm^-1
+        def cm12um(X):
+            return(nm2cm1(X)*1/1000)
+        majortickman=[2.5, 2, 1.5, 1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.33, 0.3, 0.2]
         
-    if SecondAxe and (Modeaff == 'ABScm' or Modeaff == 'ABSnorm_min_max') : # Parti double échelle mettre false pour avoir uniquement en cm^-1
-        fig.canvas.draw()
-        ax2 = ax1.twiny()
-        axmin, axmax = ax1.get_xlim()
-        ax2.set_xlim(axmin, axmax)
-    
-        # Calculate Major Ticks
-        ax2_labels = []
-        ax2_labels.append(float('inf')) #créaction de la première tique manuelle sinon ça merde, division par 0
-        for item in ax1.get_xticklabels()[1:]:
-        # for item in ax1.get_xticklabels():
-            l = 1/float(item.get_text())*1E7
-            l = "{:3.0f}".format(l)
-            ax2_labels.append(l)
-        ax2.set_xticklabels(ax2_labels)
-        #ax2.set_xlabel('Wavelenght (in nm)');
-        ax2.set_xlabel('Longueur d\'onde (nm)');
-    
+        secax = ax1.secondary_xaxis('top', functions=(cm12um, cm12um))
+        # Créaction d'un axes secondaire pour afficher les nm.
+        secax.set_xlabel('Longueur d\'onde (µm)')
+        secax.xaxis.set_major_locator(ticker.FixedLocator(majortickman))
+        secax.xaxis.set_minor_locator(ticker.FixedLocator(np.arange(0.02, 1, 0.02)))
+
+        # secax.xaxis.set_major_locator(ticker.AutoLocator())
+        # secax.xaxis.set_minor_locator(ticker.AutoMinorLocator())
+
+    if SpectreVIS :
+        #Représentation du spectre Visible en échelle linéaire en cm-1.
+        xlim=ax1.get_xlim()
+        ylim=ax1.get_ylim()
+        taillespectre=0.05*(ylim[1]-ylim[0]); # Calcul de la hauteur de l'arc en ciel 
+        
+        if xlim[0]>nm2cm1(780) or xlim[1]<nm2cm1(350) :   
+            axins=ax1.inset_axes([xlim[0],ylim[1]-taillespectre,xlim[1]-xlim[0],taillespectre],transform=ax1.transData)
+            #Création d'un graph suplémentaire dans la figure principale.
+            #Le spectre est ajusté aux valeurs limites de x et de y.
+            clim=(xlim[0],xlim[1])
+           
+        
+        else :    
+            axins=ax1.inset_axes([nm2cm1(780),ylim[1]-taillespectre,nm2cm1(350)-nm2cm1(780),taillespectre],transform=ax1.transData)              
+            clim=(nm2cm1(780),nm2cm1(350))
+            #Le spectre tiendra dans une boîte de 350 à 780nm mais linéaire en cm-1
+        
+        norm = plt.Normalize(*clim)
+        wn = np.linspace(clim[0],clim[1],2000) #sélection des nombres d'onde
+        wl=nm2cm1(wn)
+        
+        colorlist = list(zip(norm(wn),[wavelength_to_rgb(w) for w in wl]))
+        #on associe pour chaque nombre d'onde la valeur en RGB
+        spectralmap = matplotlib.colors.LinearSegmentedColormap.from_list("spectrum", colorlist)
+        # conversion en colormap
+        
+        y = np.linspace(0, 6, 100)
+        X,Y = np.meshgrid(wn, y) # création du maillage pour remplir l'image
+        
+        extent=(np.min(wn), np.max(wn), np.min(y), np.max(y))
+        axins.imshow(X, interpolation='none', clim=clim, extent=extent, cmap=spectralmap,
+                     aspect='auto') #remplissage l'axe avec les couleurs
+        axins.tick_params(axis='both', which='both', bottom=False, left=False,
+                          labelbottom=False, labelleft=False) #aucun tick
+        
+        axins.text(nm2cm1(775),2, 'IR',fontsize=14) 
+        axins.text(nm2cm1(370),2, 'UV',fontsize=14)
+
     if SHOW : Sav_fig(TITRE)
+    
+    return(fig)
 
     
 def Calcul_XYZ(Liste, Legende):
@@ -306,24 +368,18 @@ def AffichageCIE1931(Liste, Legende, TITRE='CIE1931', Marqueur='', Fleche=True,
     FIGSIZE = (6, 3)
     DPI = 150
     
-    plt.style.use({'figure.figsize': FIGSIZE, 'figure.dpi': DPI})
     xtable=[]
     ytable=[]
 
     
+    set_graph(FIGSIZE=FIGSIZE, DPI=DPI, mode='CIE1931', xylim=xylim)
+
     if TITRE == 'CIE1931':
         pass
     else:
         TITRE = TITRE + '_CIE1931'
     
     Marqueur=mono2tab(Marqueur, np.size(Liste))    
-
-    # Plotting the *CIE 1931 Chromaticity Diagram*.
-    # The argument *standalone=False* is passed so that the plot doesn't get
-    # displayed and can be used as a basis for other plots.
-    cplot.plot_chromaticity_diagram_CIE1931(standalone=False, bounding_box=xylim, x_tighten=True,
-        y_tighten=True)
-    
     tristimulus=Calcul_XYZ(Liste, Legende)
     
     for i in np.arange(0, np.size(Liste)):
@@ -336,7 +392,9 @@ def AffichageCIE1931(Liste, Legende, TITRE='CIE1931', Marqueur='', Fleche=True,
         #cplot.plot_single_colour_swatch(cplot.ColourSwatch('Sample', RGB), text_parameters={'size': 'x-large'}) # Afficage de la couleur RGB
     
         if Marqueur[i]:
-            plt.plot(x, y, marker=Marqueur[i], color='white', label=Legende[i])
+            #plt.plot(x, y, marker=Marqueur[i], color='white', label=Legende[i])
+            plt.plot(x, y, marker=Marqueur[i], label=Legende[i])
+            
         elif Fleche:
         #Plotting the *CIE xy* chromaticity coordinates.
             plt.plot(x, y, 'x-', color='white')
@@ -473,7 +531,12 @@ def Affichage_Lab3D(Liste, Legende, TITRE='Lab', Marqueur='', SHOW=True):
         x=Lab[1]
         y=Lab[2]
         z=Lab[0]
-        ax.scatter(x, y, z, label=Legende[i])
+               
+        if Marqueur[i]:
+            ax.scatter(x, y, z, marker=Marqueur[i], label=Legende[i]) 
+        else:
+            ax.scatter(x, y, z, 'x', label=Legende[i])
+
                 
     ax.set_xlabel('a')
     ax.set_ylabel('b')
@@ -574,7 +637,10 @@ def Courbe_BeerLambert_XY(Fichier, TITRE='CIE1931', fondCIE=False,
 
     '''
     xtable=[]
-    ytable=[]  
+    ytable=[]
+    FIGSIZE = (6, 3)
+    DPI = 150
+    
     (cheminfichier, nomfichier) = os.path.split(Fichier)
     Verre= nomfichier[:-19]
     
@@ -587,8 +653,7 @@ def Courbe_BeerLambert_XY(Fichier, TITRE='CIE1931', fondCIE=False,
 
 
     if fondCIE:
-        cplot.plot_chromaticity_diagram_CIE1931(standalone=False, bounding_box=xylim, x_tighten=True,
-                                                y_tighten=True)
+        set_graph(FIGSIZE=FIGSIZE, DPI=DPI, mode='CIE1931', xylim=xylim)
         ref_x, ref_y = colour.XYZ_to_xy(ref_XYZ)    
         plt.plot(ref_x,ref_y,'x',label=Verre)
     
@@ -603,7 +668,7 @@ def Courbe_BeerLambert_XY(Fichier, TITRE='CIE1931', fondCIE=False,
 
     plt.plot(xtable, ytable, label='Effet lc ' + Verre)
 
-    plt.legend()
+    plt.legend(bbox_to_anchor = [1, 1])
 
     if show: Sav_fig(TITRE, colorplot=True)
        
@@ -676,6 +741,58 @@ def Courbe_BeerLambert_Lab3D(Fichier, TITRE='Lab', lc_lim=[0.1, 5], show=True, n
     if show : Sav_fig(TITRE)
     return(x,y,z)  
   
+
+def wavelength_to_rgb(wavelength, gamma=0.8):
+    ''' taken from http://www.noah.org/wiki/Wavelength_to_RGB_in_Python
+    This converts a given wavelength of light to an 
+    approximate RGB color value. The wavelength must be given
+    in nanometers in the range from 380 nm through 750 nm
+    (789 THz through 400 THz).
+
+    Based on code by Dan Bruton
+    http://www.physics.sfasu.edu/astro/color/spectra.html
+    Additionally alpha value set to 0.5 outside range
+    '''
+    wavelength = float(wavelength)
+    if wavelength >= 380 and wavelength <= 750:
+        A = 1.
+    else:
+        A=0.1
+    if wavelength < 380:
+        wavelength = 380.
+    if wavelength >750:
+        wavelength = 750.
+    if wavelength >= 380 and wavelength <= 440:
+        attenuation = 0.3 + 0.7 * (wavelength - 380) / (440 - 380)
+        R = ((-(wavelength - 440) / (440 - 380)) * attenuation) ** gamma
+        G = 0.0
+        B = (1.0 * attenuation) ** gamma
+    elif wavelength >= 440 and wavelength <= 490:
+        R = 0.0
+        G = ((wavelength - 440) / (490 - 440)) ** gamma
+        B = 1.0
+    elif wavelength >= 490 and wavelength <= 510:
+        R = 0.0
+        G = 1.0
+        B = (-(wavelength - 510) / (510 - 490)) ** gamma
+    elif wavelength >= 510 and wavelength <= 580:
+        R = ((wavelength - 510) / (580 - 510)) ** gamma
+        G = 1.0
+        B = 0.0
+    elif wavelength >= 580 and wavelength <= 645:
+        R = 1.0
+        G = (-(wavelength - 645) / (645 - 580)) ** gamma
+        B = 0.0
+    elif wavelength >= 645 and wavelength <= 750:
+        attenuation = 0.3 + 0.7 * (750 - wavelength) / (750 - 645)
+        R = (1.0 * attenuation) ** gamma
+        G = 0.0
+        B = 0.0
+    else:
+        R = 0.0
+        G = 0.0
+        B = 0.0
+    return (R,G,B,A)
 
         
         

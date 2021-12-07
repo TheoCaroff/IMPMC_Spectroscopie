@@ -24,6 +24,7 @@ from Affichage_spectre import Courbe_BeerLambert_XY
 from Affichage_spectre import Calcul_BeerLambert_XYZ
 from Affichage_spectre import Courbe_BeerLambert_Lab3D
 from Affichage_spectre import Affichage_Lab3D
+from Affichage_spectre import Affichage_gauss
 
 from Nettoyage_spectre import Nettoyage_spectre
 
@@ -34,33 +35,37 @@ from Lecture_input import Chemin2input
 
 mode='input' # input, chemin, create_input
 
-TITRE='CDV_Bleu_[A-F]' # Pour trier les spectres à afficher, si input_XXX.csv mettre TITRE=XXX et mode = input
-
-TITRE = 'bleu_sat'
+TITRE='Vincent_corr_I100' # Pour trier les spectres à afficher, si input_XXX.csv mettre TITRE=XXX et mode = input
+CLEFDETRIE='*'#'*ref[0-9]*.csv'
 
 Recuperer_nom_dossier_temporaire=False;
 
 # folder = askdirectory()
 # os.chdir(folder)
 
+if mode == 'create_input':
+    # Si document dans plusieurs repertoir, indiquer le chemin dans un liste de string.
+    DOSSIER=['Data_corr']
+    Chemin2input(TITRE, CLEFDETRIE=CLEFDETRIE, LISTEDOSSIER=DOSSIER,
+                 mode='PERKIN', correction=2)
+    mode='input'
+    
 if mode == 'input' :
     INPUTNAME='input_'+TITRE+'.csv';
-    (Liste, Legende, Liste_ref, Correction, optplt, MarqueurCIE, Addition_Tr,
+    (Liste, Legende, Liste_ref, Liste_refN, Correction, optplt, MarqueurCIE, Addition_Tr,
              valeurnorm, Liste_corr, TITRE) = readinput(INPUTNAME, mode='numpy',
                                                         concentrationinput='epaisseur')
-elif mode == 'create_input':
-    Chemin2input(TITRE, CLEFDETRIE='*', DOSSIER='Data_trait', mode='PERKIN')
-    
 else :
-    (Liste, Legende, Liste_ref, Correction, optplt, MarqueurCIE, Addition_Tr,
+    (Liste, Legende, Liste_ref, Liste_refN, Correction, optplt, MarqueurCIE, Addition_Tr,
              valeurnorm, Liste_corr, TITRE) = Chemin2Liste(TITRE,
-             Recuperer_nom_dossier_temporaire, DOSSIER='Data_trait')
+             Recuperer_nom_dossier_temporaire, DOSSIER='Data_trait', CLEFDETRIE=CLEFDETRIE)
     
-CORRIGER=True;
+CORRIGER=False;
 
 #%% Partie absorbance
-Modeaff='ABScm' # ABScm, ABSnm, ABSnorm_min_max, SubBaseline, Reflectance, Transmittance, Epsilon, ABSnormep
-modecouleurs='bigdata'; # 'auto', 'bigdata', 'manuel'
+Modeaff='ABScm' # ABScm, ABSnm, ABSnorm_min_max, SubBaseline, Reflectance
+#Transmittance, Epsilon, ABSnormep, Gradient
+modecouleurs='auto'; # 'auto', 'bigdata', 'manuel'
 
 
 Autoaxe     = False;
@@ -69,11 +74,12 @@ SecondAxe   = True; #choix double échelle mettre false pour avoir uniquement en
 CORRIGER    = CORRIGER
 RAJOUT=''
 TITRE=TITRE
+optplt=''
 
-X_min = nm2cm1(2500);
-X_max = nm2cm1(300);
-Y_min = -0.01;
-Y_max = 4;
+X_min = nm2cm1(3000);
+X_max = nm2cm1(200);
+Y_min = -0.0;
+Y_max = 100;
 
 
 Addition_Tr=0
@@ -81,17 +87,17 @@ Addition_Tr=mono2tab(Addition_Tr, np.size(Liste))
 
 if Modeaff == 'Transmittance' or Modeaff=='ABSnm': # Si on se met en nm
     X_min = 300;
-    X_max = 2500;
+    X_max = 1100;
     Y_min = 0;
-    Y_max = 4;
+    Y_max = 1.5;
     
 elif Modeaff == 'ABSnorm_min_max' or Modeaff == 'SubBaseline':
-    Autoaxe     = False;
-    X_min = nm2cm1(2500);
-    X_max = nm2cm1(333);
+    Autoaxe = False;
+    X_min = nm2cm1(10000);
+    X_max = nm2cm1(370);
     Y_min = -0.1;
     Y_max = 1.2;
-COUPURENORMminmax=[400, 800]
+COUPURENORMminmax=[400, 700]
 
 if not (np.sum(Addition_Tr)== 0):
     RAJOUT =  RAJOUT + '_+tr_' + str(Addition_Tr[0])[2:]
@@ -105,29 +111,30 @@ else:
 
 Affichage_abs(Liste_aff, Legende, Autoaxe, [X_min, X_max], [Y_min,Y_max], SecondAxe,
               TITRE + RAJOUT, Addition_Tr, valeurnorm=valeurnorm, Modeaff=Modeaff,
-              modecouleurs=modecouleurs, optionplot=optplt, SHOW=True,
-              COUPURENORMminmax=COUPURENORMminmax)
+              modecouleurs=modecouleurs, optionplot=optplt, SHOW=True, GRAPHOUT=2,
+              COUPURENORMminmax=COUPURENORMminmax, newgraph=True)
 
-
-
-#%% Traitement spectre
-
-Liste_corr=Nettoyage_spectre(Liste, Legende, Liste_ref, Correction)
-CORRIGER=True
-
+#%%
+Affichage_gauss(Liste, Legende, TITRE+'_fitgauss', SHOW=True, optplt='--')
 
 #%% Affichage CIE
 
 x, y = AffichageCIE1931(Liste_corr, Legende, TITRE, Marqueur=MarqueurCIE,Fleche=False,
-                        xylim=[0, 0.33, 0, 0.33], show=False)
+                        xylim=[0.3, 0.8, 0.3, 0.7], show=True)
 
-Courbe_BeerLambert_XY(Liste_corr[0], show=False)
-Courbe_BeerLambert_XY(Liste_corr[3], show=True)
+# Courbe_BeerLambert_XY(Liste_corr[0], Legende[0], TITRE=TITRE, show=False)
+# Courbe_BeerLambert_XY(Liste_corr[1], Legende[1], TITRE=TITRE, show=True)
+
 
 #%% Affichage Lab
 
 Lab = Affichage_Lab2D(Liste_corr, Legende, TITRE, MarqueurCIE)
 
-Affichage_Lab3D(Liste, Legende, TITRE, SHOW=False)
+Lab_2 = Affichage_Lab3D(Liste, Legende, TITRE, SHOW=True)
 
-Courbe_BeerLambert_Lab3D(Liste_corr[1])
+#Lab_3 = Courbe_BeerLambert_Lab3D(Liste_corr[0], TITRE=TITRE, newfig=False)
+
+#%% Traitement spectre
+#Correction = [7]
+Liste_corr=Nettoyage_spectre(Liste, Legende, Liste_ref, Correction)
+CORRIGER=True

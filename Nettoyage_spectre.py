@@ -20,7 +20,8 @@ from IPython import display
 from Lecture_input import Readspectre
 from Lecture_input import Corr2Str
 from Lecture_input import normYminmax
-
+from Lecture_input import nm2cm1
+from Lecture_input import Gauss
 
 def show_interactif_loop():
     '''
@@ -50,7 +51,7 @@ def baseline_Rubberband(X, Y): # Basé sur la méthode de rubberband (voir packa
     v = v[:v.argmax()]
 
     # Create baseline using linear interpolation between vertices
-    return (np.interp(X, X[v], Y[v]))
+    return (X[v], Y[v])
 
 
 def fit_OMCT(X, Y, NOM): 
@@ -102,13 +103,7 @@ def fit_OMCT(X, Y, NOM):
         X=X[limite_basse]
         Y=Y[limite_basse]
         
-       
-        
         plt.figure(figsize=(5,3), dpi=120)
-        
-        def Gauss(X, A1, pos1, sigma1, b): # Note H largeur à mis hauteurs = 2.3548*sigma
-            RES=A1*np.exp(-(X-pos1)**2/(2*sigma1**2))+b
-            return(RES)
         
         plt.plot(X,Y, 'x',label='ref')
         
@@ -169,6 +164,18 @@ def fit_OMCT(X, Y, NOM):
     print("Paramètre de fit  : ")
     print(pop)
     
+    try :
+        text_file=open('parametre_fit_gauss.csv', "x")
+        ENTETE='Nom fichier;intensité gaussienne;centre gaussienne;sigma gaussienne;constante\n'
+        text_file.write(ENTETE)
+    except FileExistsError :
+        text_file=open('parametre_fit_gauss.csv', "a")
+
+    DATA=NOM + ';' + str(pop[0]) + ';' + str(pop[1]) + ';' + str(pop[2]) + ';' + str(pop[3])+'\n'
+    
+    text_file.write(DATA)
+    
+    text_file.close()
     return(Y_corr) #On retourne le spectre corrigé
 
 def filtrage_gauss(X, Y, NOM, zoomfig ='auto', sigma=2):
@@ -326,10 +333,18 @@ def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet
     Xmax=20000;# Affichage en x max en cm-1
 
         
-    if mode == 'Perkin':
+    if mode == 'PERKIN_micro':
         limIR= 9000;   # limite pour l'ajustement IR
         limVIS = 14000; # 
         point_jonction = 11000;
+    
+    if mode == 'PERKIN_std':
+        limIR= 11000;   # limite pour l'ajustement IR
+        limVIS = 12000; # 
+        point_jonction = 11627;
+        Xmin = 9000; # Affichage en x min en cm-1
+        Xmax = 14000;# Affichage en x max en cm-1
+        
     elif mode == 'PortableIR':
         limIR= 8000;   # limite pour l'ajustement IR
         limIR_haute = 10000;
@@ -350,17 +365,21 @@ def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet
         Xmin=20000; # Affichage en x min en cm-1
         Xmax=30000;# Affichage en x max en cm-1
 
-  
+    Borne=np.logical_and(X>Xmin, X<Xmax)
+    Ymin = 0
+    Ymax = np.nanmax(Y[Borne])
+    Ymax = Ymax+0.2*Ymax
     
     plt.figure(figsize=FIGsize, dpi=DPI)
     plt.plot(X, Y, label=NOM)
     plt.xlim([Xmin, Xmax])
+    plt.ylim([Ymin, Ymax])
     plt.grid()
     show_interactif_loop()
     
     while True: # Selection de la zone d'interpolation
         
-        if mode == 'Perkin' :
+        if mode == 'PERKIN_std' or mode == 'PERKIN_micro' :
             limIR=int(input('Rentrer la limite partie basse IR pour l ajustement (defaut ='
                                + str(limIR) +')\n') or limIR);
             limVIS=int(input('Rentrer la limite partie haute VIS pour l ajustement (defaut ='
@@ -400,6 +419,7 @@ def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet
         plt.plot(X_IR[interpo_limIR], Y_IR[interpo_limIR], label='Y_IR_ajustement');
         plt.plot(X_VIS[interpo_limVIS], Y_VIS[interpo_limVIS], label='Y_VIS_ajustement');
         plt.xlim([Xmin, Xmax])
+        plt.ylim([Ymin, Ymax])
         plt.grid()
         plt.legend()
         show_interactif_loop()
@@ -482,7 +502,7 @@ def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet
         plt.plot(X_IR, Y_IRDelta, '-', label='1ere parti remonté')
         plt.plot(X_VIS, Y_VIS, '-', label='2eme parti')
         plt.xlim([Xmin, Xmax])
-        #plt.ylim([Ymin, Ymax])
+        plt.ylim([Ymin, Ymax])
         plt.grid()
         plt.legend()
         show_interactif_loop()
@@ -575,7 +595,7 @@ def reconstruction_saut(X_IR, Y_IRDelta, X_VIS, Y_VIS, interpo_limIR, interpo_li
     Ycorr=np.concatenate([Y_IRDelta, Yinterpo, Y_VIS])
     return(Ycorr)
     
-def correction_saut_detect(X, Y, NOM):
+def correction_saut_detect(X, Y, NOM, mode='PERKIN_std'):
     '''
     Cette fonction sert à corriger le saut de detecteur des PERKIN, plusieurs type d'ajustement sont proposé'
 
@@ -587,19 +607,31 @@ def correction_saut_detect(X, Y, NOM):
         En absorbance.
     NOM : str
         Nom de ce qui est corrigé.
+    mode : str, PERKIN_std ou PERKIN_micro
+        choix du mode de travail pour la correction du saut
 
     Returns
     -------
     Ycorr : TYPE
         Correction.
-
     '''
     
-    Xmin=5000; # Affichage en x min en cm-1
-    Xmax=20000;# Affichage en x max en cm-1
+    if mode == 'PERKIN_std':
+        Xmin = 9000; # Affichage en x min en cm-1
+        Xmax = 14000;# Affichage en x max en cm-1
+        Xdebcoup = 11614; # Nombre d'onde en cm^-1 à partir duquel on suprime les valeurs du saut
+        Xfincoup = 11614; # Nombre d'onde en cm^-1 jusqu'auquel on suprime les valeurs du saut
     
-    Xdebcoup = 11500; # Nombre d'onde en cm^-1 à partir duquel on suprime les valeurs du saut
-    Xfincoup = 12500; # Nombre d'onde en cm^-1 jusqu'auquel on suprime les valeurs du saut
+    elif mode == 'PERKIN_micro':
+        Xmin = 5000; # Affichage en x min en cm-1
+        Xmax = 20000;# Affichage en x max en cm-1
+        Xdebcoup = 11500; # Nombre d'onde en cm^-1 à partir duquel on suprime les valeurs du saut
+        Xfincoup = 12500; # Nombre d'onde en cm^-1 jusqu'auquel on suprime les valeurs du saut
+    
+    Borne=np.logical_and(X>Xmin, X<Xmax)
+    Ymin = 0
+    Ymax = np.nanmax(Y[Borne])
+    Ymax = Ymax+0.2*Ymax
     
     sep_OK = False;
     #plt.ion() #Nécéssaire pour afficher les figures en %matplolib  
@@ -628,13 +660,14 @@ def correction_saut_detect(X, Y, NOM):
             plt.plot(XR1, YR1, '-', label='1ere parti')
             plt.plot(XR2, YR2, '-', label='2eme parti')
             plt.xlim([Xmin, Xmax])
+            plt.ylim([Ymin, Ymax])
             plt.grid()
             plt.legend()
             plt.show()
             
             print(NOM + '  :   la séparation est-elle correct ?\n');
             try:
-                sep_OK = int(input('Rentrez 0 si non, 1 si oui\n'))
+                sep_OK = int(input('Rentrez 0 si non, 1 si oui (default = 1)\n') or 1)
             except ValueError:
                 print('Vous n\'avez pas rentré un nombre, la séparation est considéré comme mauvaise')
                 sep_OK=False;
@@ -649,18 +682,20 @@ def correction_saut_detect(X, Y, NOM):
 
         if (sep_OK) : 
             Y_IRDelta, interpo_limIR, interpo_limVIS = Remontage_IR_VIS(XR1, YR1, XR2, YR2,
-                                                                        'Perkin', X,Y, NOM)
-            Ycorr=reconstruction_saut(XR1, Y_IRDelta, XR2, YR2, interpo_limIR,
+                                                                        mode, X,Y, NOM)
+            if mode == 'PERKIN_micro':
+                Ycorr = reconstruction_saut(XR1, Y_IRDelta, XR2, YR2, interpo_limIR,
                                      interpo_limVIS, Xinterpo, X, Y, NOM);
-        
-        
+            else:
+                Ycorr = np.concatenate([Y_IRDelta, YR2])
+                
         
         plt.figure(figsize=FIGsize, dpi=DPI)
 
         plt.plot(X, Y, label= NOM + 'Original')
         plt.plot(X, Ycorr, label = NOM +'reconstruite')
         plt.xlim([Xmin, Xmax])
-        #plt.ylim([Ymin, Ymax])
+        plt.ylim([Ymin, Ymax])
         plt.grid()
         plt.legend()
         show_interactif_loop()
@@ -888,10 +923,10 @@ def Soustraction_interpolation(X1, Y1, X2, Y2):
         Gamme des X communes au deux courbe
 
     '''
-    plt.figure(figsize=([6,3]), dpi=120)
-    plt.plot(X1, Y1, '.', label='DATA 1', markersize=1)
-    plt.plot(X2, Y2, '.', label='DATA 2', markersize=3)
-    plt.legend()
+    # plt.figure(figsize=([6,3]), dpi=120)
+    # plt.plot(X1, Y1, '.', label='DATA 1', markersize=1)
+    # plt.plot(X2, Y2, '.', label='DATA 2', markersize=3)
+    # plt.legend()
     
     if (np.nanmin(X1)<np.nanmin(X2)):
         if (np.nanmax(X1)>np.nanmax(X2)): # Les valeur de X2 sont strictement comprise dans X1
@@ -928,10 +963,10 @@ def Soustraction_interpolation(X1, Y1, X2, Y2):
 
     
     Y_diff=Y2-Y1;
-    #Y_diff=-Y_diff
-    plt.plot(Xref, Y_diff, '^', label="différence", markersize=1)
-    plt.legend()
-    plt.show
+    # #Y_diff=-Y_diff
+    # plt.plot(Xref, Y_diff, '^', label="différence", markersize=1)
+    # plt.legend()
+    # plt.show
     
     return(Xref, Y_diff)
 
@@ -963,7 +998,7 @@ def Soustraction_norm(X1, Y1, X2, Y2, COUPUREminmax=[400, 2500]):
     return(Soustraction_interpolation(X1, Y1, X2, Y2))
 
 
-def SavCSV(X, Y, NOM, Legende, Dossier='./Data_corr', ENTETE='\n X en nm; Y en %T'):
+def SavCSV(X, Y, NOM, Legende='', Dossier='./Data_corr', ENTETE='\n X en nm; Y en %T'):
     try:
         os.mkdir(Dossier)
     except OSError:
@@ -976,7 +1011,7 @@ def SavCSV(X, Y, NOM, Legende, Dossier='./Data_corr', ENTETE='\n X en nm; Y en %
     np.savetxt(Dossier+os.sep+NOM, Save, delimiter=';', header=HEADER, comments='');
       
 
-def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Addition_Tr=0):
+def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Liste_refN='', Addition_Tr=0):
     '''
     Cette fonction permet de réaliser de traitement sur des spectres en nm/%T. 
 
@@ -994,9 +1029,11 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Addition_Tr=0):
         4 pour effectué une correction du saut de détecteur du Perkin, avec filtrage et soustraction du blanc.
         5 pour passer une fichier d'ABS en Tr
         6 pour joindre les spectres issu du spectro portable
-        7 pour sauvegarder les spectres en ABS et cm^-1
+        7 pour extraire la ligne de base avec la méthode de rubberband
         8 pour additionner un spectre en absorbance
-        9 pour soustraitre deux spectre normalisé et interpollé
+        9 pour soustraitre deux spectre normalisé et interpolé
+        10 pour diviser par le blanc et soustraire le noir
+        11 pour corriger le saut du perkin en configuration standard
     Addition_Tr : float
         Valeur ajouté à la transmittance en cas de valeurs trop basse qui donne des nan suite au log
     Raises
@@ -1012,6 +1049,7 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Addition_Tr=0):
     Liste_corr=[]
     Dossier='./Data_corr'
     ENTETE = '\n X en nm; Y en %T'
+
     
     if np.size(Addition_Tr) == 1: Addition_Tr=(np.zeros(np.size(Liste)) + Addition_Tr)
     
@@ -1026,7 +1064,7 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Addition_Tr=0):
             (cheminfichier, nomfichier) = os.path.split(Fichier)
               
             Xnm, Ytr = Readspectre(Fichier)
-            X = 1/(Xnm*1E-7); #
+            X = nm2cm1(Xnm); #
             
             Y = - np.log10(Ytr+Addition_Tr[i])# Si data en %T
             
@@ -1039,7 +1077,8 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Addition_Tr=0):
 
                 Y_corr=Y-I100
                 Fichier_corr=nomfichier[0:-4] + Corr2Str(correction[i])
-                
+                #Fichier_corr= Legende[i]+'_diff.csv' 
+            
             elif(correction[i]==2): # fit bande UV                
                 Y_corr=fit_OMCT(X,Y,Legende[i])    
                 Fichier_corr=nomfichier[0:-4]+ Corr2Str(correction[i])
@@ -1050,15 +1089,15 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Addition_Tr=0):
                 Fichier_corr=nomfichier[0:-4]+ Corr2Str(correction[i])
                 
             elif(correction[i]==4): # Saut de détecteur
-                Xnm_ref, Ytr_ref=Readspectre(Liste_ref[i])
-                I100 = -np.log10(Ytr_ref)
+                #Xnm_ref, Ytr_ref=Readspectre(Liste_ref[i])
+                #I100 = -np.log10(Ytr_ref)
 
-                Y_corr=Y-I100;
+                Y_corr=Y#-I100;
                 #Y_corr= filtrage_gauss(X, Y_corr, Legende[i])
-                Y_corr= correction_saut_detect(X, Y_corr, Legende[i])
+                Y_corr= correction_saut_detect(X, Y_corr, Legende[i], mode='Perkin_micro')
                 
-                Xsave, Y_corr= filtrage_gauss(X, Y_corr, Legende[i] + 'corr', 2)
-                Xsave = 1/(Xsave*1E-7);
+                #Xsave, Y_corr= filtrage_gauss(X, Y_corr, Legende[i] + 'corr', 2)
+                #Xsave = 1/(Xsave*1E-7);
                 
                 Fichier_corr=nomfichier[0:-4] + Corr2Str(correction[i])
             
@@ -1073,19 +1112,21 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Addition_Tr=0):
                 
                 Fichier_corr=nomfichier[0:-4]+ Corr2Str(correction[i])
             
-            elif(correction[i]==7): #sauvergarde en ABS / cm-1
-                Y_save  = Y
-                Xsave = X;
+            elif(correction[i]==7): #extraction ligne de base
+                INDEXUV=Xnm>330
+                
+                Xsave, Y_corr = baseline_Rubberband(X[INDEXUV], Y[INDEXUV])
+                Xsave=nm2cm1(Xsave)
                 Fichier_corr=nomfichier[0:-4] + Corr2Str(correction[i])
-                Dossier = './Data_ABScm'
-                ENTETE = '\n X en cm^-1; Y en Absorbance'
+                Dossier = './baseline'
+                ENTETE = '\n X en nm; Y en %T'
              
             elif(correction[i] == 8): # Ajout d'un spectre, utilise si DO mesure spectro portable
                 Xnm_ref, Ytr_ref=Readspectre(Liste_ref[i])
                 REF = -np.log10(Ytr_ref)
 
-                Y_corr=Y+2
-                #Y_corr=Y+REF
+                #Y_corr=Y+2
+                Y_corr=Y+REF
                 Fichier_corr=nomfichier[0:-4] + Corr2Str(correction[i])
             
             elif(correction[i] == 9): # Soustration normalisée
@@ -1093,17 +1134,39 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Addition_Tr=0):
                 YREF = -np.log10(Ytr_ref)
                 XREF = 1/(Xnm_ref*1E-7);
 
-                Xsave, Y_corr = Soustraction_norm(XREF, YREF, X, Y)
+                Xsave, Y_corr = Soustraction_norm(XREF, YREF, X, Y, COUPUREminmax=[nm2cm1(2500), nm2cm1(400)])
                 Xsave=1/(Xsave*1E-7);                
                 Fichier_corr=nomfichier[0:-4] + Corr2Str(correction[i])
-
+                #Fichier_corr= Legende[i]+'.csv'
+                
+            elif(correction[i] == 10): # Division blanc (tr) et soustraction noir (tr)
+                Xnm_refN, Ytr_noir=Readspectre(Liste_refN[i])
+                Xnm_ref, Ytr_blanc=Readspectre(Liste_ref[i])
+                
+                Ytr_blanc   = Ytr_blanc - Ytr_noir
+                Ytr         = Ytr       - Ytr_noir
+                
+                Ytr_corr    = Ytr / Ytr_blanc
+                
+                Y_corr = - np.log10(Ytr_corr+Addition_Tr[i])
+                
+                Fichier_corr=nomfichier[0:-4] + Corr2Str(correction[i])
             
+            elif(correction[i]==11) :
+                # Xnm_ref, Ytr_ref=Readspectre(Liste_ref[i])
+                # I100 = -np.log10(Ytr_ref)
+                # Y_corr=Y-I100;
+                Y_corr=Y
+                Y_corr= correction_saut_detect(X, Y_corr, Legende[i], mode='PERKIN_std')
+                
+                Fichier_corr=nomfichier[0:-4] + Corr2Str(correction[i])
+
             else:
                 raise ValueError('La correction demandée n\'est pas implémentée, vérifier le fichier d\'input')
             
             Liste_corr.append(Dossier+os.sep+Fichier_corr);
             
-            if not (correction[i] == 7):
+            if not (correction[i] == 10000):
                 Y_save=np.power(10, -Y_corr); # On repasse en %T pour assurer la comptabilité avec le reste des scripts
 
             SavCSV(Xsave, Y_save, Fichier_corr, Legende[i], Dossier, ENTETE);

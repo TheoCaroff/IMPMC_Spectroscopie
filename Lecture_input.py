@@ -39,7 +39,7 @@ def Corr2Str(Correction_number):
     # print(Correction_number)
     if Correction_number == 1:
        Correction_NAME = '_cor_I100.csv'
-       
+      
     elif Correction_number == 2:
        Correction_NAME = '_cor_UV.csv'
        
@@ -58,14 +58,22 @@ def Corr2Str(Correction_number):
         Correction_NAME = '_jointNIR.csv'
     
     elif Correction_number == 7:
-        Correction_NAME = '_ABScm.csv'
+        Correction_NAME = '_baseline.csv'
     
     elif Correction_number == 8:
         #Correction_NAME = '_cor_DO.csv'
         Correction_NAME = 'corr.csv'
+        
     elif Correction_number == 9:
         Correction_NAME = '_soustrait_norm.csv'
-
+        
+    elif Correction_number == 10:
+        Correction_NAME = '_cor_I100_I0.csv'
+    
+    elif Correction_number == 11:
+       Correction_NAME = '_cor_I100_saut.csv'
+       
+    
     elif Correction_number == 0:
         Correction_NAME=''
         
@@ -74,7 +82,50 @@ def Corr2Str(Correction_number):
     
     return(Correction_NAME)
 
+
+def mono2tab(Value, size):
+    '''
+    Cette fonction sert à générer un tableau de la taille size, à partir d'un valeur
+
+    Parameters
+    ----------
+    Value : TYPE
+        DESCRIPTION.
+    size : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+        Liste de taille size avec Value dans chaque case.
+
+    '''
+    if (np.size(Value) == 1): # Si pas d'argument un marqueur unique pour toute les données
+        Value_ref = Value
+        Value = []
+        for i in np.arange(0, size):
+            Value.append(Value_ref)
+    return(Value)
+
+
 def list_folder_filter(CLEFDETRIE='', CHEMIN='.', DOSSIER='/Data_trait'):
+    '''
+    Renvoi une liste triée à l'humaine des fichiers contenant la clef
+        de trie dans le repertoir DOSSIER
+
+    Parameters
+    ----------
+    CLEFDETRIE : TYPE, optional
+        DESCRIPTION. The default is ''.
+    CHEMIN : TYPE, optional
+        DESCRIPTION. The default is '.'.
+    DOSSIER : TYPE, optional
+        DESCRIPTION. The default is '/Data_trait'.
+
+    Returns
+    -------
+    None.
+
+    '''
     os.chdir(CHEMIN)
     CHEMIN = CHEMIN + os.sep + DOSSIER
     Liste = os.listdir(CHEMIN); #Récupère la liste des fichiers
@@ -82,28 +133,67 @@ def list_folder_filter(CLEFDETRIE='', CHEMIN='.', DOSSIER='/Data_trait'):
     Liste = fnmatch.filter(Liste, CLEFDETRIE)
     return(Liste)
 
-def Chemin2input(TITRE, CLEFDETRIE='', CHEMIN='.', DOSSIER='Data_trait', mode='portable', correction='0'):
+def Chemin2input(TITRE, CLEFDETRIE='', CHEMIN='.', LISTEDOSSIER=['Data_trait'], mode='portable', correction='0'):
+    '''
+    Cette fonction sert à créer un ficher d'input contenant le chemin relatif
+    vers les fichiers matchant avec la clef de trie et étant dans les dossier 
+    dans la liste LISTEDOSSIER
+    
+    Parameters
+    ----------
+    TITRE : string
+        Titre.
+    CLEFDETRIE : string, optional
+        Chaine de caractère pour le trie, si vide le trie s'effectuer via le titre. The default is ''.
+    CHEMIN : TYPE, optional
+        DESCRIPTION. The default is '.'.
+    LISTEDOSSIER : tab de string, optional
+        Tableau des différents dossier à visiter. The default is ['Data_trait'].
+    mode : string, optional
+        choix du mode, PERKIN, portable ou ID20. The default is 'portable'.
+    correction : TYPE, optional
+        valeur de remplissage de la case correction. The default is '0'.
+    
+    Returns
+    -------
+    None.
+    
+    '''
+
     if CLEFDETRIE== '' : 
         CLEFDETRIE = '*'+TITRE+'*'
-    
-    if mode == 'portable':
-        Liste       = list_folder_filter(CLEFDETRIE+'*VIS_*', CHEMIN, DOSSIER);
-        Liste_ref   = list_folder_filter(CLEFDETRIE+'*NIR*', CHEMIN, DOSSIER);
-        Legende     = [re.sub("_Transmission.*csv", '', x) for x in Liste]
-        Correction  = 6;
         
-    if mode == 'PERKIN':
-        Liste       = list_folder_filter(CLEFDETRIE, CHEMIN, DOSSIER);
-        Liste_ref   = mono2tab('', np.size(Liste))
-        Legende     = [re.sub("Sample.*csv", '', x) for x in Liste]
-        Correction  = 1
-        
-    Liste=['.'+os.sep + DOSSIER + os.sep + x for x in Liste]
-    Liste_ref=['.'+os.sep + DOSSIER + os.sep + x for x in Liste_ref]
+    Liste       =[]
+    Liste_ref   =[]
+    Legende     =[]
     
+    for DOSSIER in LISTEDOSSIER:
+       
+        if mode == 'portable':
+            Liste_temp       = list_folder_filter(CLEFDETRIE+'*VIS_*', CHEMIN, DOSSIER);
+            Liste_ref_temp   = list_folder_filter(CLEFDETRIE+'*NIR*', CHEMIN, DOSSIER);
+            Legende_temp     = [re.sub("_Transmission.*csv", '', x) for x in Liste_temp]
+            Correction       = 6;
+            
+        if mode == 'PERKIN':
+    
+            Liste_temp       = list_folder_filter(CLEFDETRIE, CHEMIN, DOSSIER);
+            Liste_ref_temp   = mono2tab('', np.size(Liste_temp))
+            Legende_temp     = [re.sub(".Sample.*csv", '', x) for x in Liste_temp]
+            Correction       = correction
+
+        if mode == 'ID20' :
+            Liste_temp       = list_folder_filter(CLEFDETRIE, CHEMIN, DOSSIER);
+            Liste_ref_temp   = mono2tab('', np.size(Liste_temp))
+            Legende_temp     = [re.sub(".dat", '', x) for x in Liste_temp]
+            Correction       = correction
+        
+        Liste     = Liste     + ['.'+os.sep + DOSSIER + os.sep + x for x in Liste_temp]
+        Liste_ref = Liste_ref + ['.'+os.sep + DOSSIER + os.sep + x for x in Liste_ref_temp]
+        Legende   = Legende   + Legende_temp
+  
     taille=np.size(Liste)
 
-    
     df = pd.DataFrame(dict(Nom_fichier=Liste,
                       Legende       = Legende,
                       Nom_ref       = Liste_ref,
@@ -113,7 +203,8 @@ def Chemin2input(TITRE, CLEFDETRIE='', CHEMIN='.', DOSSIER='Data_trait', mode='p
                       Epaisseur     = np.zeros(taille),
                       Concentration = np.ones(taille)*-1,
                       Tx_redox      = np.ones(taille),
-                      Addition_Tr   = np.zeros(taille)))
+                      Addition_Tr   = np.zeros(taille),
+                      Nom_refN      = mono2tab('', taille)))
     
     SAVE=df.to_csv(sep=';', index=False);
     
@@ -173,8 +264,9 @@ def Chemin2Liste(TITRE, Recuperer_nom_dossier_temporaire=False, CLEFDETRIE='', C
     valeurnorm=1
     Correction=0
     optplt=''
+    Liste_refN=''
     
-    return(Liste, Legende, Liste_ref, Correction, optplt, MarqueurCIE, Addition_Tr, valeurnorm, Liste_corr, TITRE)
+    return(Liste, Legende, Liste_ref, Liste_refN, Correction, optplt, MarqueurCIE, Addition_Tr, valeurnorm, Liste_corr, TITRE)
 
 
 def readinput(INPUTNAME='input.csv', mode='numpy', concentrationinput='none'):
@@ -208,7 +300,13 @@ def readinput(INPUTNAME='input.csv', mode='numpy', concentrationinput='none'):
         #print(Data)
         Liste = (Data[:, 0].tolist())
         Legende = (Data[:, 1])
-        Liste_ref = Data[:, 2]; # Chemin de la référence, si vide le fichier à déja été traiter
+        Liste_ref = Data[:, 2] # Chemin de la référence, si vide le fichier à déja été traiter
+        
+        try:
+            Liste_refN = Data[:,10]; # Chemin de la référence noir, si vide le noir n'est pas à soustraire
+        except IndexError:
+            Liste_refN = mono2tab('', np.size(Liste))
+        
         try:
             Correction =  Data[:, 3].astype(np.float); 
         except ValueError:
@@ -238,7 +336,10 @@ def readinput(INPUTNAME='input.csv', mode='numpy', concentrationinput='none'):
             
         Liste =     Data.Nom_fichier.tolist()
         Legende =   Data.Legende.tolist()
-        Liste_ref = Data.Nom_ref.tolist(); # Chemin de la référence, si vide le fichier à déja été traiter
+        Liste_ref = Data.Nom_ref.tolist() # Chemin de la référence, si vide le fichier à déja été traiter
+        
+        try: Liste_refN = Data.Nom_refN.tolist(); 
+        except : Liste_refN = mono2tab('', np.size(Liste))
         
         try:
             Correction = Data.Correction.tolist()  
@@ -268,7 +369,7 @@ def readinput(INPUTNAME='input.csv', mode='numpy', concentrationinput='none'):
     
     if concentrationinput == 'epaisseur':
         valeurnorm = Epaisseur
-    
+        #print(Epaisseur)
     elif concentrationinput == 'molaire' : # Récupération des information suplémentaire du fichier d'input
         valeurnorm=Concentration*Epaisseur*Tx_redox
     
@@ -303,35 +404,10 @@ def readinput(INPUTNAME='input.csv', mode='numpy', concentrationinput='none'):
     except FileNotFoundError:
         pass
 
-    return(Liste, Legende, Liste_ref, Correction, optplt, MarqueurCIE, Addition_Tr, valeurnorm, Liste_corr, TITRE)
+    return(Liste, Legende, Liste_ref, Liste_refN, Correction, optplt, MarqueurCIE, Addition_Tr, valeurnorm, Liste_corr, TITRE)
 
 
-
-def mono2tab(Value, size):
-    '''
-    Cette fonction sert à générer un tableau de la taille size, à partir d'un valeur
-
-    Parameters
-    ----------
-    Value : TYPE
-        DESCRIPTION.
-    size : TYPE
-        DESCRIPTION.
-
-    Returns
-    -------
-        Liste de taille size avec Value dans chaque case.
-
-    '''
-    if (np.size(Value) == 1): # Si pas d'argument un marqueur unique pour toute les données
-        Value_ref = Value
-        Value = []
-        for i in np.arange(0, size):
-            Value.append(Value_ref)
-    return(Value)
-
-
-def Readspectre(Fichier, skip_header=2, delimiter=';'):
+def Readspectre(Fichier, skip_header=2, delimiter=';', colonne=1):
     '''
     Cette fonction lis un CSV dont le chemin est renseigné dans la variable Fichier,
     il renvoit un valeur X correpsondant à la première colonne (0) et Y correspondant à la deuxième (1)
@@ -353,7 +429,7 @@ def Readspectre(Fichier, skip_header=2, delimiter=';'):
         Data = np.genfromtxt(Fichier, skip_header=skip_header, delimiter=delimiter, encoding='latin-1'); # si jamais l'encodage n'est pas UTF8
     
     X = Data[:, 0]
-    Y = Data[:, 1]
+    Y = Data[:, colonne]
     return([X, Y])
 
 def natural_sort(l):#Fonction qui sert à trier dans l'ordre naturel (ou humain) les listes.
@@ -387,3 +463,30 @@ def normYminmax(X, Y, COUPURENORMminmax=[400, 2500]):
     Y = Y - np.min(Y[INDEX])
     Y = Y/np.max(Y[INDEX])
     return(Y)
+
+def Gauss(X, A1, pos1, sigma1, b): # Note H largeur à mis hauteurs = 2.3548*sigma
+    '''
+    calcul pour les valeur de X un gausienne + une constante
+    
+    Parameters
+    ----------
+    A1 : float
+        Intensité de la gaussienne
+    pos1 : float
+        Centre de la gaussienne
+    sigma1 : float
+        sigma, FHW = 2.3548*sigma
+    b : float
+        constante pour shift en Y la gaussienne
+        
+    Returns
+    -------
+    None.
+        
+    '''
+    RES=A1*np.exp(-(X-pos1)**2/(2*sigma1**2))+b;
+    return(RES)
+
+def Gauss(X, A1, pos1, sigma1, b): # Note H largeur à mis hauteurs = 2.3548*sigma
+    RES=A1*np.exp(-(X-pos1)**2/(2*sigma1**2))+b
+    return(RES)

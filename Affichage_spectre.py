@@ -19,6 +19,7 @@ from Lecture_input import mono2tab
 from Lecture_input import Readspectre
 from Lecture_input import normYminmax
 from Lecture_input import nm2cm1
+from Lecture_input import Gauss
 
 from Nettoyage_spectre import baseline_Rubberband
 
@@ -29,7 +30,7 @@ except ModuleNotFoundError :
     print('ATTENTION MODULE COLOR-SCIENCE PAS INSTALLER')
 
 
-def set_graph(FIGSIZE=[15, 10], DPI = 120, grid=True, mode='default', xylim=[-0.1, 0.8, 0, 1]):
+def set_graph(FIGSIZE=[12, 10], DPI = 120, GRAPHOUT=0, grid=True, mode='default', xylim=[-0.1, 0.8, 0, 1]):
     '''
     Paramètre la figure qui va servir à afficher les spectres
 
@@ -47,6 +48,26 @@ def set_graph(FIGSIZE=[15, 10], DPI = 120, grid=True, mode='default', xylim=[-0.
     None.
 
     '''
+    top=0.97
+    bottom=0.12
+    left=0.08
+    right=0.985
+    wspace=0
+    hspace=0
+    
+    
+    if GRAPHOUT == 1:
+        FIGSIZE=[5, 3];
+        bottom=0.15
+        left=0.13
+    
+    if GRAPHOUT== 2:
+        FIGSIZE=[10, 5]
+        DPI = 100
+    
+    else:
+        pass
+    
     plt.style.use({'figure.figsize': FIGSIZE, 'figure.dpi': DPI})
 #   plt.figure(figsize=(FIGSIZE), dpi=DPI)
     if mode == 'default':
@@ -59,7 +80,7 @@ def set_graph(FIGSIZE=[15, 10], DPI = 120, grid=True, mode='default', xylim=[-0.
         cplot.plot_chromaticity_diagram_CIE1931(standalone=False,
                                                 bounding_box=xylim, x_tighten=True, y_tighten=True)
     
-    plt.subplots_adjust(left=0.05, bottom=0.1, right=0.95, top=0.9, wspace=0, hspace=0)
+    plt.subplots_adjust(left=left, bottom=bottom, right=right, top=top, wspace=wspace, hspace=hspace)
 
 
 def Sav_fig(Titre='Pouet', Repertoire='Graph', colorplot=False):
@@ -84,7 +105,7 @@ def Sav_fig(Titre='Pouet', Repertoire='Graph', colorplot=False):
         os.mkdir(Repertoire)
     except OSError:
         pass
-    
+    plt.legend()
     plt.savefig(Repertoire+os.sep+Titre, bbox_inches='tight')
 
     if colorplot:
@@ -95,7 +116,7 @@ def Sav_fig(Titre='Pouet', Repertoire='Graph', colorplot=False):
 def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5],
                   SecondAxe=True, TITRE='superposition', AdditionTr=0,
                   linewidth=1.5, valeurnorm=1, Modeaff='ABScm', modecouleurs='auto', optionplot='',
-                  SHOW=True, COUPURENORMminmax=[400, 2500], newgraph=True, SpectreVIS=True):
+                  SHOW=True, GRAPHOUT=1,COUPURENORMminmax=[400, 2500], newgraph=True, SpectreVIS=True):
     '''
     Cette fonction affiche des spectes optique obtenu en %T en absorbance et
     sauvegarde le graph dans un dossier graph placé dans le repertoire courant
@@ -136,7 +157,7 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
         Pour afficher le spectre visible. The default is True.
     Returns
     -------
-    La figure courante
+        La figure courante
 
     '''
     
@@ -146,7 +167,19 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
     AdditionTr=mono2tab(AdditionTr, np.size(Liste))
     valeurnorm=mono2tab(valeurnorm, np.size(Liste))
     
-    if newgraph : set_graph() # Cf fonction, on créer la figure à la bonne taille/résolution
+    if GRAPHOUT == 1:
+        FIGSIZE=[15, 10]
+        DPI = 120
+        tailletexte=14
+    elif GRAPHOUT == 2 :
+        FIGSIZE=[10, 5]
+        DPI = 100
+        tailletexte=10
+    
+    
+    if newgraph : set_graph(FIGSIZE, DPI) # Cf fonction, on créer la figure à la bonne taille/résolution
+
+    
 
     colorsbigdata = plt.cm.nipy_spectral(np.linspace(0,1,np.size(Liste))) # On fixe la gamme de couleur utilisé
 
@@ -187,7 +220,7 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
        
         elif Modeaff == 'ABSnormep':
             Y = Y/valeurnorm[i];
-            plt.ylabel('Absorbance normalisée ($cm^{-1}$)') 
+            plt.ylabel('Absorbance linéaire ($cm^{-1}$)') 
             RAJOUT = '_norm_ep'
         
         elif Modeaff == 'Epsilon':
@@ -202,7 +235,7 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
             RAJOUT = '_normmin_ep'
         
         elif Modeaff == 'SubBaseline':
-            INDEXUV=Xnm>280
+            INDEXUV=Xnm>355
             X=X[INDEXUV]
             Y=Y[INDEXUV]
             
@@ -211,12 +244,22 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
             Y=Y-baseline
             # #Y=baseline
             # Y = Y/valeurnorm[i];
-            # RAJOUT = '_subRubber_normep'
+            RAJOUT = '_subRubber_normep'
 
-            #Y = normYminmax(Xnm[INDEXUV], Y, COUPURENORMminmax)  
-            RAJOUT = '_subRubber'
+            Y = normYminmax(Xnm[INDEXUV], Y, COUPURENORMminmax)  
+            #RAJOUT = '_subRubber'
             
             plt.ylabel('Absorbance normalisé (u.a)')# à l''épaisseur soustrait ligne de base Rubberband (u.a)')
+        
+        elif Modeaff == 'Gradient':
+            INDEXUV=Xnm>350
+            X=X[INDEXUV]
+            Y=Y[INDEXUV]
+            Y=np.gradient(Y, X)
+            #Y=np.gradient(Y, X)
+            plt.ylabel('dA/dx (u.a)')
+            RAJOUT = '_gradient'
+        
         else:
             X = Xnm;
             Y = Ytr;
@@ -239,7 +282,7 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
     #plt.legend(Legende, loc="upper left");
     #plt.legend(Legende, bbox_to_anchor = [0.5, 0.2])
     plt.legend()
-    
+      
     TITRE=TITRE+RAJOUT
     
     
@@ -268,16 +311,18 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
         ylim=ax1.get_ylim()
         taillespectre=0.05*(ylim[1]-ylim[0]); # Calcul de la hauteur de l'arc en ciel 
         
-        if xlim[0]>nm2cm1(780) or xlim[1]<nm2cm1(350) :   
-            axins=ax1.inset_axes([xlim[0],ylim[1]-taillespectre,xlim[1]-xlim[0],taillespectre],transform=ax1.transData)
+        if xlim[0]>nm2cm1(850) or xlim[1]<nm2cm1(350) :   
+            axins=ax1.inset_axes([xlim[0],ylim[1]-(taillespectre+0.02*taillespectre),
+                                  xlim[1]-xlim[0],taillespectre],transform=ax1.transData)
             #Création d'un graph suplémentaire dans la figure principale.
             #Le spectre est ajusté aux valeurs limites de x et de y.
             clim=(xlim[0],xlim[1])
            
         
         else :    
-            axins=ax1.inset_axes([nm2cm1(780),ylim[1]-taillespectre,nm2cm1(350)-nm2cm1(780),taillespectre],transform=ax1.transData)              
-            clim=(nm2cm1(780),nm2cm1(350))
+            axins=ax1.inset_axes([nm2cm1(850),ylim[1]-(taillespectre+0.02*taillespectre),
+                                  nm2cm1(350)-nm2cm1(850),taillespectre],transform=ax1.transData)              
+            clim=(nm2cm1(850),nm2cm1(350))
             #Le spectre tiendra dans une boîte de 350 à 780nm mais linéaire en cm-1
         
         norm = plt.Normalize(*clim)
@@ -297,15 +342,59 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
                      aspect='auto') #remplissage l'axe avec les couleurs
         axins.tick_params(axis='both', which='both', bottom=False, left=False,
                           labelbottom=False, labelleft=False) #aucun tick
-        
-        axins.text(nm2cm1(775),2, 'IR',fontsize=14) 
-        axins.text(nm2cm1(370),2, 'UV',fontsize=14)
+        axins.axis('off')
+        axins.text(nm2cm1(790),2, 'IR',fontsize=tailletexte) 
+        axins.text(nm2cm1(370),2, 'UV',fontsize=tailletexte)
 
+#Agrandir les légendes
+    # params = {'legend.fontsize': tailletexte,'legend.handlelength': 1, 'font.size': tailletexte}
+    # plt.rcParams.update(params)
+    
+    # ax1.tick_params(which='major',length=5)
+    # ax1.tick_params(which='minor',length=5)
+    # secax.tick_params(which='major',length=5)
+    # secax.tick_params(which='minor',length=5)
+    
     if SHOW : Sav_fig(TITRE)
     
     return(fig)
 
+def Affichage_gauss(Liste, Legende, TITRE, SHOW=True, optplt='--') :
+    '''
+    Lit le fichier parametre_fit_gauss.csv et trace les gaussienne correspondante
+    si le nom du fit match avec les strings dans la variable legende
+
+    Parameters
+    ----------
+    Liste : TYPE
+        DESCRIPTION.
+    Legende : TYPE
+        DESCRIPTION.
+    TITRE : TYPE
+        Nom de sauvegarde du fichier.
+    SHOW : TYPE, optional
+        True pour sauvegarder et afficher la legende. The default is True.
+    optplt : TYPE, optional
+        DESCRIPTION. The default is '--'.
+
+    Returns
+    -------
+    None.
+
+    '''
+    Data=np.genfromtxt('./parametre_fit_gauss.csv', comments='#', skip_header=1, delimiter=';', dtype='str' )
     
+    X = np.linspace(25000, 45000, 200)
+    
+    for i in np.arange(0, np.size(Data[:, 0])):
+        if Data[i, 0] in Legende :
+            Y = Gauss(X, float(Data[i,1]), float(Data[i,2]), float(Data[i,3]), float(Data[i,4]))
+            plt.plot(X, Y, optplt, label='fit'+Data[i, 0])
+        else:
+            pass
+    if SHOW : Sav_fig(TITRE)
+    return()
+
 def Calcul_XYZ(Liste, Legende):
     '''
     Parameters
@@ -324,6 +413,9 @@ def Calcul_XYZ(Liste, Legende):
         INDEX=~np.isnan(Ytr) # supression des nan
         Ytr=Ytr[INDEX]
         Xnm=Xnm[INDEX]
+        
+        # Ytr=-np.log10(Ytr) #sibesoin de corriger le spectre
+        # Ytr=np.power(10, -Ytr)
         
         nm=np.arange(int(np.min(Xnm))+1 , int(np.max(Xnm))-1) # Création des valeur en nm à interpoler (pas de 1, 5, 10 ou 20 nm)
         
@@ -397,7 +489,7 @@ def AffichageCIE1931(Liste, Legende, TITRE='CIE1931', Marqueur='', Fleche=True,
             
         elif Fleche:
         #Plotting the *CIE xy* chromaticity coordinates.
-            plt.plot(x, y, 'x-', color='white')
+            plt.plot(x, y, 'x', color='white')
         # Annotating the plot. 
             plt.annotate(Legende[i],
                             xy=(x, y),
@@ -406,7 +498,7 @@ def AffichageCIE1931(Liste, Legende, TITRE='CIE1931', Marqueur='', Fleche=True,
                             arrowprops=dict(arrowstyle='->', connectionstyle='arc3, rad=-0.2'))
             
         else :
-                plt.plot(x, y, 'x-', label=Legende[i])
+                plt.plot(x, y, 'x', label=Legende[i])
         
     plt.legend()
 
@@ -482,7 +574,7 @@ def Affichage_Lab2D(Liste, Legende, TITRE='Lab', Marqueur='', SHOW=True):
     return(Lab_liste)
         
 
-def Affichage_Lab3D(Liste, Legende, TITRE='Lab', Marqueur='', SHOW=True):
+def Affichage_Lab3D(Liste, Legende, TITRE='Lab3D', Marqueur='', SHOW=True):
     '''
     Cette fonction afficer les LAB sur un graph 3D des fichier dans LISTE.
 
@@ -528,22 +620,23 @@ def Affichage_Lab3D(Liste, Legende, TITRE='Lab', Marqueur='', SHOW=True):
         Lab=colour.XYZ_to_Lab(XYZ);
         Lab_liste.append(Lab)
         
-        x=Lab[1]
-        y=Lab[2]
-        z=Lab[0]
+        L=Lab[0]
+        a=Lab[1]
+        b=Lab[2]
+        
                
         if Marqueur[i]:
-            ax.scatter(x, y, z, marker=Marqueur[i], label=Legende[i]) 
+            ax.scatter(a, b, L, marker=Marqueur[i], label=Legende[i]) 
         else:
-            ax.scatter(x, y, z, 'x', label=Legende[i])
+            ax.scatter(a, b, L, marker='o', label=Legende[i])
 
                 
     ax.set_xlabel('a')
     ax.set_ylabel('b')
     ax.set_zlabel('L')
-    ax.set_xlim([-300, 300])
-    ax.set_ylim([-300, 300])
-    ax.set_zlim([-350,350])
+    # ax.set_xlim([-300, 300])
+    # ax.set_ylim([-300, 300])
+    # ax.set_zlim([-350,350])
  
     #fig.tight_layout()
     if SHOW : Sav_fig(TITRE)
@@ -572,10 +665,6 @@ def Calcul_BeerLambert_XYZ(Fichier, coeflim=[0.1, 5]):
     INDEX=~np.isnan(T) # supression des nan
     T=T[INDEX]
     Xnm=Xnm[INDEX]
-    
-    # A = -np.log10(T)
-    # A = A - np.min(A)
-    # T = np.power(10, -A) #Niveau à 0
    
     coef = np.arange(coeflim[0], coeflim[1], 0.1)
     XYZ=np.ones((np.size(coef), 3))
@@ -610,7 +699,7 @@ def Calcul_BeerLambert_XYZ(Fichier, coeflim=[0.1, 5]):
     return(XYZ, Legende, ref_XYZ)
     
     
-def Courbe_BeerLambert_XY(Fichier, TITRE='CIE1931', fondCIE=False,
+def Courbe_BeerLambert_XY(Fichier, Legende, TITRE='CIE1931', fondCIE=False,
                           xylim=[-0.1, 0.8, -0.1, 1], lc_lim=[0.1, 5], show=True):
     '''
     Cette fonction trace la courbe de Beer-Lambert en coordonnées colorimétriques xy 
@@ -642,7 +731,7 @@ def Courbe_BeerLambert_XY(Fichier, TITRE='CIE1931', fondCIE=False,
     DPI = 150
     
     (cheminfichier, nomfichier) = os.path.split(Fichier)
-    Verre= nomfichier[:-19]
+    Verre = Legende
     
     if TITRE == 'CIE1931':
         pass
@@ -668,6 +757,7 @@ def Courbe_BeerLambert_XY(Fichier, TITRE='CIE1931', fondCIE=False,
 
     plt.plot(xtable, ytable, label='Effet lc ' + Verre)
 
+    #plt.legend(loc='upper right')
     plt.legend(bbox_to_anchor = [1, 1])
 
     if show: Sav_fig(TITRE, colorplot=True)
@@ -675,7 +765,7 @@ def Courbe_BeerLambert_XY(Fichier, TITRE='CIE1931', fondCIE=False,
     return(xtable, ytable)
     
     
-def Courbe_BeerLambert_Lab3D(Fichier, TITRE='Lab', lc_lim=[0.1, 5], show=True, newfig=False):
+def Courbe_BeerLambert_Lab3D(Fichier, Legende='', TITRE='Lab', lc_lim=[0.1, 5], show=True, newfig=False):
     '''
     Cette fonction trace la courbe 3D de Beer-Lambert en coordonnées colorimétriques Lab
     (i.e. évolution des coordonnées Lab avec le paramètre lc) à partir d'un spectre donné.
@@ -698,29 +788,29 @@ def Courbe_BeerLambert_Lab3D(Fichier, TITRE='Lab', lc_lim=[0.1, 5], show=True, n
     '''
     
     (cheminfichier, nomfichier) = os.path.split(Fichier)
-    Verre= nomfichier[:-19]
+    if Legende == '':
+        Verre = nomfichier[:-19]
+    else :
+        Verre = Legende
     
     XYZ,Legende,ref_XYZ=Calcul_BeerLambert_XYZ(Fichier, coeflim=lc_lim)
     
     if newfig:
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
-        Ref= colour.XYZ_to_Lab(ref_XYZ)
-        ref_x = Ref[1]
-        ref_y = Ref[2]
-        ref_z = Ref[0]
-        ax.scatter(ref_x, ref_y, ref_z, marker='x', label=Verre)
+        Ref_L, ref_a, ref_b = colour.XYZ_to_Lab(ref_XYZ)
+
+        ax.scatter(ref_a, ref_b, Ref_L, marker='x', label=Verre)
         ax.set_xlabel('a')
         ax.set_ylabel('b')
         ax.set_zlabel('L')
-        ax.set_xlim([-350, 350])
-        ax.set_ylim([-350, 350])
-        ax.set_zlim([-350, 350])
+        # ax.set_xlim([-350, 350])
+        # ax.set_ylim([-350, 350])
+        # ax.set_zlim([-350, 350])
         
-        
-    x=[]
-    y=[]
-    z=[]
+    L=[]
+    a=[]
+    b=[]
     
     if TITRE == 'Lab3D':
         pass
@@ -728,18 +818,18 @@ def Courbe_BeerLambert_Lab3D(Fichier, TITRE='Lab', lc_lim=[0.1, 5], show=True, n
         TITRE = TITRE + '_Lab3D'
 
     for i in np.arange(0,np.size(XYZ, 0)):                
-        Lab =  colour.XYZ_to_Lab(XYZ[i]) # passage en xyY pour le diagramme fer à Cheval CIE1931
-        x.append(Lab[1])
-        y.append(Lab[2])
-        z.append(Lab[0]) 
+        L_temp, a_temp, b_temp =  colour.XYZ_to_Lab(XYZ[i]) # passage en xyY pour le diagramme fer à Cheval CIE1931
+        L.append(L_temp)
+        a.append(a_temp)
+        b.append(b_temp) 
     
-    plt.plot(x,y,z, label='Effet lc ' + Verre)
+    plt.plot(a,b, L, label='Effet lc ' + Verre)
 
     plt.legend()
  
 
     if show : Sav_fig(TITRE)
-    return(x,y,z)  
+    return(L,a,b)  
   
 
 def wavelength_to_rgb(wavelength, gamma=0.8):
@@ -754,10 +844,14 @@ def wavelength_to_rgb(wavelength, gamma=0.8):
     Additionally alpha value set to 0.5 outside range
     '''
     wavelength = float(wavelength)
-    if wavelength >= 380 and wavelength <= 750:
+    if wavelength >= 400 and wavelength <= 750:
         A = 1.
+    elif wavelength > 750 and wavelength <= 850:
+        A=0.01*(850-wavelength)
+    elif wavelength < 400 and wavelength >= 350:
+        A=0.02*(wavelength-350)
     else:
-        A=0.1
+        A=0.0
     if wavelength < 380:
         wavelength = 380.
     if wavelength >750:
@@ -794,6 +888,69 @@ def wavelength_to_rgb(wavelength, gamma=0.8):
         B = 0.0
     return (R,G,B,A)
 
+def Affichage_ID20(Liste, Legende, Autoaxe=True, Xlim=[0, 800], Ylim=[0, 1],
+                  TITRE='superposition', linewidth=1.5, Modeaff='default',
+                  modecouleurs='auto', optionplot='', SHOW=True, GRAPHOUT=1,
+                  newgraph=True):
+ 
+    
+    Legende=mono2tab(Legende, np.size(Liste))
+    optionplot=mono2tab(optionplot, np.size(Liste))
+
+    
+    if newgraph : set_graph(GRAPHOUT=GRAPHOUT) # Cf fonction, on créer la figure à la bonne taille/résolution
+
+
+    colorsbigdata = plt.cm.nipy_spectral(np.linspace(0,1,np.size(Liste))) # On fixe la gamme de couleur utilisé
+
+    if Autoaxe:
+        pass
+    else:
+        plt.xlim(Xlim);
+        plt.ylim(Ylim);
+    
+
+    for i in np.arange(0, np.size(Liste)): # on lit tous les fichier  
+        Fichier = Liste[i];
         
+        X, Y = Readspectre(Fichier, skip_header=0, delimiter=' ')
+
+        plt.xlabel("Perte d'énergie (en eV)");
+        plt.ylabel('Intensité (U.A)')
+            
+        if Modeaff == 'default':
+            RAJOUT= ''
+
+        elif Modeaff == 'Gradient':
+            Y=np.gradient(Y, X)
+            #Y=np.gradient(Y, X)
+            plt.ylabel('dA/dx (u.a)')
+            RAJOUT = '_gradient'
+        
+
+        if modecouleurs == 'auto':
+            plt.plot(X, Y, linewidth=linewidth, label=Legende[i])
+        
+        elif modecouleurs == 'bigdata':
+            plt.plot(X, Y, color=colorsbigdata[i], linewidth=linewidth, label=Legende[i])
+            
+        elif modecouleurs == 'manuel':
+            if  optionplot[i] == '':
+                plt.plot(X, Y, linewidth=linewidth, label=Legende[i])
+            else:
+                plt.plot(X, Y, optionplot[i], linewidth=linewidth, label=Legende[i])
+            
+    #plt.legend(Legende, loc="upper left");
+    #plt.legend(Legende, bbox_to_anchor = [0.5, 0.2])
+    plt.legend()
+      
+    TITRE=TITRE+RAJOUT
+    
+    ax1=plt.gca()
+    fig=plt.gcf()   
+
+    if SHOW : Sav_fig(TITRE)
+    
+    return(fig)       
         
         

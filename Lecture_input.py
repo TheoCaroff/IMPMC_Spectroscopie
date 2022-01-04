@@ -172,7 +172,9 @@ def Chemin2input(TITRE, CLEFDETRIE='', CHEMIN='.', LISTEDOSSIER=['Data_trait'], 
         if mode == 'portable':
             Liste_temp       = list_folder_filter(CLEFDETRIE+'*VIS_*', CHEMIN, DOSSIER);
             Liste_ref_temp   = list_folder_filter(CLEFDETRIE+'*NIR*', CHEMIN, DOSSIER);
-            Legende_temp     = [re.sub("_Transmission.*csv", '', x) for x in Liste_temp]
+            #Legende_temp     = [re.sub("_Transmission.*csv", '', x) for x in Liste_temp]
+            Legende_temp     = [re.sub("_T.*csv", '', x) for x in Liste_temp]
+            
             Correction       = 6;
             
         if mode == 'PERKIN':
@@ -487,6 +489,34 @@ def Gauss(X, A1, pos1, sigma1, b): # Note H largeur à mis hauteurs = 2.3548*sig
     RES=A1*np.exp(-(X-pos1)**2/(2*sigma1**2))+b;
     return(RES)
 
-def Gauss(X, A1, pos1, sigma1, b): # Note H largeur à mis hauteurs = 2.3548*sigma
-    RES=A1*np.exp(-(X-pos1)**2/(2*sigma1**2))+b
-    return(RES)
+# def Gauss(X, A1, pos1, sigma1, b): # Note H largeur à mis hauteurs = 2.3548*sigma
+#     RES=A1*np.exp(-(X-pos1)**2/(2*sigma1**2))+b
+#     return(RES)
+
+def removeInfNan(X,Y):
+    '''
+    Cette fonction retire les valeurs nan et inf en Y d'un jeux de données X/Y
+
+    Parameters
+    ----------
+    X : TYPE
+        DESCRIPTION.
+    Y : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    None.
+
+    '''
+    Filtrenan = np.invert(np.isnan(Y))
+    Filtreinf = np.invert(np.isinf(Y))
+    
+    
+    FILTRE = np.logical_and(Filtrenan, Filtreinf)
+    print(FILTRE)
+    
+    Xcorr=X[FILTRE]
+    Ycorr=Y[FILTRE]
+    
+    return(Xcorr,Ycorr)

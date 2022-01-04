@@ -35,7 +35,7 @@ from Lecture_input import Chemin2input
 
 mode='input' # input, chemin, create_input
 
-TITRE='Vincent_corr_I100' # Pour trier les spectres à afficher, si input_XXX.csv mettre TITRE=XXX et mode = input
+TITRE='test' # Pour trier les spectres à afficher, si input_XXX.csv mettre TITRE=XXX et mode = input
 CLEFDETRIE='*'#'*ref[0-9]*.csv'
 
 Recuperer_nom_dossier_temporaire=False;
@@ -43,11 +43,13 @@ Recuperer_nom_dossier_temporaire=False;
 # folder = askdirectory()
 # os.chdir(folder)
 
+DOSSIER='Data_trait'
+
 if mode == 'create_input':
     # Si document dans plusieurs repertoir, indiquer le chemin dans un liste de string.
-    DOSSIER=['Data_corr']
+    DOSSIER=[DOSSIER]
     Chemin2input(TITRE, CLEFDETRIE=CLEFDETRIE, LISTEDOSSIER=DOSSIER,
-                 mode='PERKIN', correction=2)
+                 mode='portable', correction=6)
     mode='input'
     
 if mode == 'input' :
@@ -58,9 +60,11 @@ if mode == 'input' :
 else :
     (Liste, Legende, Liste_ref, Liste_refN, Correction, optplt, MarqueurCIE, Addition_Tr,
              valeurnorm, Liste_corr, TITRE) = Chemin2Liste(TITRE,
-             Recuperer_nom_dossier_temporaire, DOSSIER='Data_trait', CLEFDETRIE=CLEFDETRIE)
-    
-CORRIGER=False;
+             Recuperer_nom_dossier_temporaire, DOSSIER=DOSSIER, CLEFDETRIE=CLEFDETRIE)
+
+#Legende=mono2tab(TITRE, 1)
+                                                           
+CORRIGER=True;
 
 #%% Partie absorbance
 Modeaff='ABScm' # ABScm, ABSnm, ABSnorm_min_max, SubBaseline, Reflectance
@@ -68,7 +72,7 @@ Modeaff='ABScm' # ABScm, ABSnm, ABSnorm_min_max, SubBaseline, Reflectance
 modecouleurs='auto'; # 'auto', 'bigdata', 'manuel'
 
 
-Autoaxe     = False;
+Autoaxe     = True;
 SecondAxe   = True; #choix double échelle mettre false pour avoir uniquement en cm^-1
 
 CORRIGER    = CORRIGER
@@ -77,9 +81,9 @@ TITRE=TITRE
 optplt=''
 
 X_min = nm2cm1(3000);
-X_max = nm2cm1(200);
+X_max = nm2cm1(370);
 Y_min = -0.0;
-Y_max = 100;
+Y_max = 3;
 
 
 Addition_Tr=0
@@ -97,7 +101,7 @@ elif Modeaff == 'ABSnorm_min_max' or Modeaff == 'SubBaseline':
     X_max = nm2cm1(370);
     Y_min = -0.1;
     Y_max = 1.2;
-COUPURENORMminmax=[400, 700]
+COUPURENORMminmax=[1000, 2500]
 
 if not (np.sum(Addition_Tr)== 0):
     RAJOUT =  RAJOUT + '_+tr_' + str(Addition_Tr[0])[2:]
@@ -115,7 +119,7 @@ Affichage_abs(Liste_aff, Legende, Autoaxe, [X_min, X_max], [Y_min,Y_max], Second
               COUPURENORMminmax=COUPURENORMminmax, newgraph=True)
 
 #%%
-Affichage_gauss(Liste, Legende, TITRE+'_fitgauss', SHOW=True, optplt='--')
+#Affichage_gauss(Liste, Legende, TITRE+'_fitgauss', SHOW=True, optplt='--')
 
 #%% Affichage CIE
 
@@ -135,6 +139,6 @@ Lab_2 = Affichage_Lab3D(Liste, Legende, TITRE, SHOW=True)
 #Lab_3 = Courbe_BeerLambert_Lab3D(Liste_corr[0], TITRE=TITRE, newfig=False)
 
 #%% Traitement spectre
-#Correction = [7]
+#Correction = [2]
 Liste_corr=Nettoyage_spectre(Liste, Legende, Liste_ref, Correction)
 CORRIGER=True

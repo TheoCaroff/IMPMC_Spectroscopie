@@ -81,6 +81,8 @@ def set_graph(FIGSIZE=[12, 10], DPI = 120, GRAPHOUT=0, grid=True, mode='default'
                                                 bounding_box=xylim, x_tighten=True, y_tighten=True)
     
     plt.subplots_adjust(left=left, bottom=bottom, right=right, top=top, wspace=wspace, hspace=hspace)
+    
+    return(plt.gcf(), plt.gca())
 
 
 def Sav_fig(Titre='Pouet', Repertoire='Graph', colorplot=False):

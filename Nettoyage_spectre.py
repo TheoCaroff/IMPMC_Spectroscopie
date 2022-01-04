@@ -22,6 +22,8 @@ from Lecture_input import Corr2Str
 from Lecture_input import normYminmax
 from Lecture_input import nm2cm1
 from Lecture_input import Gauss
+from Lecture_input import removeInfNan
+
 
 def show_interactif_loop():
     '''
@@ -33,8 +35,8 @@ def show_interactif_loop():
     None.
 
     '''
-    display.clear_output(wait=True)
-    display.display(plt.gcf())
+    #display.clear_output(wait=True)
+    #display.display(plt.gcf())
     plt.show(block=True)
 
 def baseline_Rubberband(X, Y): # Basé sur la méthode de rubberband (voir package hyperspectra pour R)
@@ -54,7 +56,7 @@ def baseline_Rubberband(X, Y): # Basé sur la méthode de rubberband (voir packa
     return (X[v], Y[v])
 
 
-def fit_OMCT(X, Y, NOM): 
+def fit_OMCT(X, Y, NOM, removenaninf=True): 
     '''
     Cette fonction sert à fiter un Gausienne
     Dans le cas d'un transfert de charge O-élément d.
@@ -74,14 +76,16 @@ def fit_OMCT(X, Y, NOM):
     Y_coor, float qui est la soustration du Y original et du fit.
 
     '''
-
-    nbonde_min_fit=27000; # limite basse de la partie des data qui vont être ajuster
-    nbonde_max_fit=31000; # limite haute
     
-    Intes_fit=500; # intensité de la gausienne pour l'ajustement
-    Locali_fit=42000; #position central
-    Sigma_fit = 3500; # écart type Gauss
-    Shift_fit = 0.1; # shift de la gausienne
+    if removenaninf : X,Y = removeInfNan(X, Y)
+    
+    nbonde_min_fit=27000; # limite basse de la partie des data qui vont être ajuster
+    nbonde_max_fit=32000; # limite haute
+    
+    Intes_fit=10; # intensité de la gausienne pour l'ajustement
+    Locali_fit=34000; #position central
+    Sigma_fit = 1500; # écart type Gauss
+    Shift_fit = 1; # shift de la gausienne
     
     X_ori=X;
     Y_ori=Y;
@@ -121,6 +125,7 @@ def fit_OMCT(X, Y, NOM):
             
             plt.figure(figsize=(5,3), dpi=120)
             Y_fit=Gauss(X_ori, pop[0], pop[1], pop[2], 0); # on ne soustrait pas le shift
+            #Y_fit=Gauss(X, pop[0], pop[1], pop[2], 0)
             
             Y_corr=Y_ori-Y_fit;
             plt.plot(X_ori,Y_ori,label='Origine')
@@ -176,7 +181,7 @@ def fit_OMCT(X, Y, NOM):
     text_file.write(DATA)
     
     text_file.close()
-    return(Y_corr) #On retourne le spectre corrigé
+    return(X, Y_corr) #On retourne le spectre corrigé
 
 def filtrage_gauss(X, Y, NOM, zoomfig ='auto', sigma=2):
     '''
@@ -619,8 +624,8 @@ def correction_saut_detect(X, Y, NOM, mode='PERKIN_std'):
     if mode == 'PERKIN_std':
         Xmin = 9000; # Affichage en x min en cm-1
         Xmax = 14000;# Affichage en x max en cm-1
-        Xdebcoup = 11614; # Nombre d'onde en cm^-1 à partir duquel on suprime les valeurs du saut
-        Xfincoup = 11614; # Nombre d'onde en cm^-1 jusqu'auquel on suprime les valeurs du saut
+        Xdebcoup = 11615; # Nombre d'onde en cm^-1 à partir duquel on suprime les valeurs du saut
+        Xfincoup = 11615; # Nombre d'onde en cm^-1 jusqu'auquel on suprime les valeurs du saut
     
     elif mode == 'PERKIN_micro':
         Xmin = 5000; # Affichage en x min en cm-1
@@ -817,7 +822,7 @@ def Traitement_spectro_portable(CHEMIN_IR, CHEMIN_VIS, NOM='pouet', Addition_Tr=
      
     FIGsize=(10,6)
     DPI=120
-    SHIFT_NIRQUEST=17 # décallage en nm entre le NIRQUEST et le PERKIN.
+    SHIFT_NIRQUEST=0 # décallage en nm entre le NIRQUEST et le PERKIN.
     
     Trait_OK = False;
     
@@ -970,7 +975,7 @@ def Soustraction_interpolation(X1, Y1, X2, Y2):
     
     return(Xref, Y_diff)
 
-def Soustraction_norm(X1, Y1, X2, Y2, COUPUREminmax=[400, 2500]):
+def Soustraction_norm(X1, Y1, X2, Y2, COUPUREminmax=[200, 3300]):
     '''
     Cette fonction soustrait deux jeux de données en les normalisant entre 0 et 1 et en les interpolants.
     Y2-Y1
@@ -1009,7 +1014,37 @@ def SavCSV(X, Y, NOM, Legende='', Dossier='./Data_corr', ENTETE='\n X en nm; Y e
     Save=np.array([X, Y]).transpose() # On met sous la forme XY en colonne. DEPRECIER ?
     #Save=np.concatenate((X[np.newaxis,:], Y[np.newaxis,:])).transpose() à vérifier la fiabilité
     np.savetxt(Dossier+os.sep+NOM, Save, delimiter=';', header=HEADER, comments='');
-      
+    
+def Reflexion(X,Y,Legend, SHOW=True)    :
+    '''
+    Cette fonction permet de supprimer les pertes de transmittance dues à la reflexion sur les 2 faces du verre 
+    X tableau de float en longueur d'onde 
+    
+
+    Returns
+    -------
+    None.
+
+    '''
+    n = 1.517#+6200E-14/(X**2)+1000000E-28/(X**4) #indice de réfraction
+    R = np.power(((1-n)/(1+n)),2)#coeff de reflexion
+    A_ref =-2*np.log10(1-R) #absorbance due à la reflexion et à soustraire à l'absorbance totale
+    print('A_ref : ')
+    print(A_ref)
+    Ycorr  = Y-A_ref; 
+    
+    if SHOW == True :
+        plt.plot(X, Ycorr, label = Legend + ' corrigé reflexion')
+        plt.plot(X, Y, label= Legend + ' non corrigé')
+        plt.grid(True);
+        plt.xlabel("Nombre d'onde ($cm^{-1}$)");
+        plt.ylabel('Absorbance')  
+        plt.xlim(3000, 33000)
+        plt.legend()
+        plt.show()
+        
+    return(Ycorr)
+        
 
 def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Liste_refN='', Addition_Tr=0):
     '''
@@ -1034,6 +1069,7 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Liste_refN='', Addi
         9 pour soustraitre deux spectre normalisé et interpolé
         10 pour diviser par le blanc et soustraire le noir
         11 pour corriger le saut du perkin en configuration standard
+        12 pour supprimer les pertes en reflexion
     Addition_Tr : float
         Valeur ajouté à la transmittance en cas de valeurs trop basse qui donne des nan suite au log
     Raises
@@ -1080,7 +1116,8 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Liste_refN='', Addi
                 #Fichier_corr= Legende[i]+'_diff.csv' 
             
             elif(correction[i]==2): # fit bande UV                
-                Y_corr=fit_OMCT(X,Y,Legende[i])    
+                Xsave, Y_corr=fit_OMCT(X,Y,Legende[i])
+                
                 Fichier_corr=nomfichier[0:-4]+ Corr2Str(correction[i])
                 
             elif(correction[i]==3): #Lissage
@@ -1134,7 +1171,8 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Liste_refN='', Addi
                 YREF = -np.log10(Ytr_ref)
                 XREF = 1/(Xnm_ref*1E-7);
 
-                Xsave, Y_corr = Soustraction_norm(XREF, YREF, X, Y, COUPUREminmax=[nm2cm1(2500), nm2cm1(400)])
+                #Xsave, Y_corr = Soustraction_norm(XREF, YREF, X, Y, COUPUREminmax=[nm2cm1(3300), nm2cm1(200)])
+                Xsave, Y_corr = Soustraction_interpolation(XREF, YREF, X, Y)
                 Xsave=1/(Xsave*1E-7);                
                 Fichier_corr=nomfichier[0:-4] + Corr2Str(correction[i])
                 #Fichier_corr= Legende[i]+'.csv'
@@ -1160,7 +1198,12 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Liste_refN='', Addi
                 Y_corr= correction_saut_detect(X, Y_corr, Legende[i], mode='PERKIN_std')
                 
                 Fichier_corr=nomfichier[0:-4] + Corr2Str(correction[i])
-
+            
+            elif(correction[i]==12) :
+                Y_corr = Reflexion(X, Y, Legende[i])
+                
+                Fichier_corr=nomfichier[0:-4] + Corr2Str(correction[i])
+                
             else:
                 raise ValueError('La correction demandée n\'est pas implémentée, vérifier le fichier d\'input')
             

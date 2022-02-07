@@ -54,8 +54,12 @@ def Corr2Str(Correction_number):
        #Correction_NAME = '_Tr.csv'
        Correction_NAME = '.csv'
     
-    elif Correction_number == 6:
+    elif Correction_number == 6 or Correction_number == -6 :
         Correction_NAME = '_jointNIR.csv'
+    
+    elif Correction_number == 66 :
+        Correction_NAME = '_jointNIR.csv'
+        Correction_NAME = Correction_NAME[:-4] + '_jointUV.csv'
     
     elif Correction_number == 7:
         Correction_NAME = '_baseline.csv'
@@ -72,7 +76,12 @@ def Corr2Str(Correction_number):
     
     elif Correction_number == 11:
        Correction_NAME = '_cor_I100_saut.csv'
-       
+    
+    elif Correction_number == 12:
+        Correction_NAME = 'reflexion.csv'    
+    
+    elif Correction_number == 13:
+        Correction_NAMESavCSV = 'sub_baseline.csv' 
     
     elif Correction_number == 0:
         Correction_NAME=''
@@ -127,6 +136,9 @@ def list_folder_filter(CLEFDETRIE='', CHEMIN='.', DOSSIER='/Data_trait'):
 
     '''
     os.chdir(CHEMIN)
+    print(type(CHEMIN))
+    print('\n\n\n')
+    print(type(DOSSIER))
     CHEMIN = CHEMIN + os.sep + DOSSIER
     Liste = os.listdir(CHEMIN); #Récupère la liste des fichiers
     Liste = natural_sort(Liste)
@@ -170,12 +182,11 @@ def Chemin2input(TITRE, CLEFDETRIE='', CHEMIN='.', LISTEDOSSIER=['Data_trait'], 
     for DOSSIER in LISTEDOSSIER:
        
         if mode == 'portable':
-            Liste_temp       = list_folder_filter(CLEFDETRIE+'*VIS_*', CHEMIN, DOSSIER);
+            Liste_temp       = list_folder_filter(CLEFDETRIE+'*VIS*', CHEMIN, DOSSIER);
             Liste_ref_temp   = list_folder_filter(CLEFDETRIE+'*NIR*', CHEMIN, DOSSIER);
-            #Legende_temp     = [re.sub("_Transmission.*csv", '', x) for x in Liste_temp]
-            Legende_temp     = [re.sub("_T.*csv", '', x) for x in Liste_temp]
-            
-            Correction       = 6;
+            Legende_temp     = [re.sub("_Transmission.*csv", '', x) for x in Liste_temp]
+            #Legende_temp     = [re.sub("_T.*csv", '', x) for x in Liste_temp]
+            Correction       = correction
             
         if mode == 'PERKIN':
     
@@ -193,9 +204,17 @@ def Chemin2input(TITRE, CLEFDETRIE='', CHEMIN='.', LISTEDOSSIER=['Data_trait'], 
         Liste     = Liste     + ['.'+os.sep + DOSSIER + os.sep + x for x in Liste_temp]
         Liste_ref = Liste_ref + ['.'+os.sep + DOSSIER + os.sep + x for x in Liste_ref_temp]
         Legende   = Legende   + Legende_temp
-  
+    # print(np.size(Liste))
+    # print('\n\n\n')
+    # print(Liste)
+    # print(np.size(Liste_ref))
+    # print('\n\n\n')
+    # print(Liste_ref)
+    # print(np.size(Legende))
+    # print('\n\n\n')
+    # return(Liste, Liste_ref)
+    
     taille=np.size(Liste)
-
     df = pd.DataFrame(dict(Nom_fichier=Liste,
                       Legende       = Legende,
                       Nom_ref       = Liste_ref,
@@ -218,7 +237,7 @@ def Chemin2input(TITRE, CLEFDETRIE='', CHEMIN='.', LISTEDOSSIER=['Data_trait'], 
     
     text_file.close()
     
-def Chemin2Liste(TITRE, Recuperer_nom_dossier_temporaire=False, CLEFDETRIE='', CHEMIN='.', DOSSIER='Data_trait'):
+def Chemin2Liste(TITRE, Recuperer_nom_dossier_temporaire=False, CLEFDETRIE='', CHEMIN='.', LISTEDOSSIER=['Data_trait']):
     '''
     Cette fonction permet d'utiliser les codes écrit pour fonctionner avec un input en listant les fichier
     dans DOSSIER situé dans CHEMIN
@@ -249,16 +268,18 @@ def Chemin2Liste(TITRE, Recuperer_nom_dossier_temporaire=False, CLEFDETRIE='', C
         RACINE = repspectro.read();
         repspectro.close();
 
-
     else:
         RACINE = CHEMIN
         #RACINE = askdirectory()
     
-    Liste = list_folder_filter(CLEFDETRIE, RACINE, DOSSIER);
+    Liste=[]
+    Legende=[]
     
-    Legende=[x[:-4] for x in Liste]
-    
-    Liste=[DOSSIER + os.sep + x for x in Liste]
+    for DOSSIER in LISTEDOSSIER:
+        Liste_temp = list_folder_filter(CLEFDETRIE, RACINE, DOSSIER);
+        Legende=Legende+[x[:-4] for x in Liste_temp]
+        Liste=Liste+[DOSSIER + os.sep + x for x in Liste_temp]
+        
     Liste_ref=''
     Liste_corr=''
     MarqueurCIE=''
@@ -267,7 +288,7 @@ def Chemin2Liste(TITRE, Recuperer_nom_dossier_temporaire=False, CLEFDETRIE='', C
     Correction=0
     optplt=''
     Liste_refN=''
-    
+
     return(Liste, Legende, Liste_ref, Liste_refN, Correction, optplt, MarqueurCIE, Addition_Tr, valeurnorm, Liste_corr, TITRE)
 
 
@@ -300,6 +321,8 @@ def readinput(INPUTNAME='input.csv', mode='numpy', concentrationinput='none'):
             Data = np.genfromtxt(INPUTNAME, comments='#', skip_header=1, delimiter=';', dtype='str', encoding='latin-1');
     # Récupération des données de base du fichier d'input
         #print(Data)
+        if np.size(Data.shape) < 2 : Data=np.array([Data]) # Si jamais le fichier ne contient qu'une seule ligne.
+            
         Liste = (Data[:, 0].tolist())
         Legende = (Data[:, 1])
         Liste_ref = Data[:, 2] # Chemin de la référence, si vide le fichier à déja été traiter
@@ -442,7 +465,7 @@ def natural_sort(l):#Fonction qui sert à trier dans l'ordre naturel (ou humain)
 def nm2cm1(X):
     return(1/(X*1E-7))
 
-def normYminmax(X, Y, COUPURENORMminmax=[400, 2500]):
+def normYminmax(X, Y, COUPURENORMminmax=[400, 2500], onlymin=False):
     '''
     Cette fonction normalise entre 0 et 1 le jeu de donnés Y dans la gamme des X compris dans la liste COUPURENORMminmax.
     
@@ -463,7 +486,7 @@ def normYminmax(X, Y, COUPURENORMminmax=[400, 2500]):
     '''
     INDEX = np.logical_and(X>COUPURENORMminmax[0], X<COUPURENORMminmax[1])             
     Y = Y - np.min(Y[INDEX])
-    Y = Y/np.max(Y[INDEX])
+    if not onlymin : Y = Y/np.max(Y[INDEX])
     return(Y)
 
 def Gauss(X, A1, pos1, sigma1, b): # Note H largeur à mis hauteurs = 2.3548*sigma
@@ -520,3 +543,59 @@ def removeInfNan(X,Y):
     Ycorr=Y[FILTRE]
     
     return(Xcorr,Ycorr)
+
+def saveDATACIE_xy(TITRE, Legende, x, y):
+    DOSSIER='Colorimetrie'
+    try :
+        os.mkdir(DOSSIER)
+    except :
+        pass
+
+    df = pd.DataFrame(dict(Nom_fichier  = Legende,
+                           x            =  x,
+                           y            = y))
+    
+    SAVE=df.to_csv(sep=';', index=False);
+    
+    print(SAVE)
+    text_file = open('.' + os.sep + DOSSIER + os.sep + TITRE + '_CIE_xy.csv', "w")
+    text_file.write(SAVE)
+    text_file.close()
+    
+def saveDATACIE_LAB(TITRE, Legende, L, a, b):
+    DOSSIER='Colorimetrie'
+    try :
+        os.mkdir(DOSSIER)
+    except :
+        pass
+    
+    df = pd.DataFrame(dict(Nom_fichier  = Legende,
+                           L            =  L,
+                           a            = a,
+                           b            = b))
+    
+    SAVE=df.to_csv(sep=';', index=False);
+    
+    print(SAVE)
+    text_file = open('.' + os.sep + DOSSIER + os.sep + TITRE + '_CIE_LAB.csv', "w")
+    text_file.write(SAVE)
+    text_file.close()
+
+def saveDATACIE_XYZ(TITRE, Legende, X, Y, Z):
+    DOSSIER='Colorimetrie'
+    try :
+        os.mkdir(DOSSIER)
+    except :
+        pass
+    
+    df = pd.DataFrame(dict(Nom_fichier  = Legende,
+                           X            =  X,
+                           Y            = Y,
+                           Z            = Z))
+    
+    SAVE=df.to_csv(sep=';', index=False);
+    
+    print(SAVE)
+    text_file = open('.' + os.sep + DOSSIER + os.sep + TITRE + '_CIE_XYZ.csv', "w")
+    text_file.write(SAVE)
+    text_file.close()

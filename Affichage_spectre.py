@@ -20,6 +20,9 @@ from Lecture_input import Readspectre
 from Lecture_input import normYminmax
 from Lecture_input import nm2cm1
 from Lecture_input import Gauss
+from Lecture_input import saveDATACIE_xy
+from Lecture_input import saveDATACIE_LAB
+from Lecture_input import saveDATACIE_XYZ
 
 from Nettoyage_spectre import baseline_Rubberband
 
@@ -85,7 +88,7 @@ def set_graph(FIGSIZE=[12, 10], DPI = 120, GRAPHOUT=0, grid=True, mode='default'
     return(plt.gcf(), plt.gca())
 
 
-def Sav_fig(Titre='Pouet', Repertoire='Graph', colorplot=False):
+def Sav_fig(Titre='Pouet', Repertoire='Graph', colorplot=False, Tight=True):
     '''
     Cette fonction permet de sauvegarer un graph matplotlib puis l'affiche'
 
@@ -108,6 +111,9 @@ def Sav_fig(Titre='Pouet', Repertoire='Graph', colorplot=False):
     except OSError:
         pass
     plt.legend()
+    
+    if Tight : plt.tight_layout() 
+    
     plt.savefig(Repertoire+os.sep+Titre, bbox_inches='tight')
 
     if colorplot:
@@ -118,7 +124,8 @@ def Sav_fig(Titre='Pouet', Repertoire='Graph', colorplot=False):
 def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5],
                   SecondAxe=True, TITRE='superposition', AdditionTr=0,
                   linewidth=1.5, valeurnorm=1, Modeaff='ABScm', modecouleurs='auto', optionplot='',
-                  SHOW=True, GRAPHOUT=1,COUPURENORMminmax=[400, 2500], newgraph=True, SpectreVIS=True):
+                  SHOW=True, GRAPHOUT=1,COUPURENORMminmax=[400, 2500], newgraph=True,
+                  SpectreVIS=True, Sousmin=False):
     '''
     Cette fonction affiche des spectes optique obtenu en %T en absorbance et
     sauvegarde le graph dans un dossier graph placé dans le repertoire courant
@@ -155,8 +162,10 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
         Choix des options des matplolib à utiliser en mode manuel
     SHOW : Bool, optional
         Pour afficher et sauvergarder la figure. The default is True.
-    SpectreVIS = Bool, optional
+    SpectreVIS : Bool, optional
         Pour afficher le spectre visible. The default is True.
+    Sousmin : Bool, optional
+        Pour soustraite par le mininum d'abs. The default is False
     Returns
     -------
         La figure courante
@@ -181,7 +190,6 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
     
     if newgraph : set_graph(FIGSIZE, DPI) # Cf fonction, on créer la figure à la bonne taille/résolution
 
-    
 
     colorsbigdata = plt.cm.nipy_spectral(np.linspace(0,1,np.size(Liste))) # On fixe la gamme de couleur utilisé
 
@@ -199,6 +207,9 @@ def Affichage_abs(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0, 1.5
         Ytr= Ytr + AdditionTr[i]
         X = 1/(Xnm*1E-7);
         Y = -np.log10(Ytr);
+        
+        if Sousmin : Y = Y-np.nanmin(Y)
+        
         plt.xlabel("Nombre d'onde ($cm^{-1}$)");
         plt.ylabel('Absorbance')
             
@@ -434,7 +445,7 @@ def Calcul_XYZ(Liste, Legende):
         
         #cplot.plot_single_sd(sd) # Affichage de la densité si besoin, possibilité d'en afficher plusieurs avec la bonne fonction 
     
-        XYZ[i] = colour.sd_to_XYZ(sd, cmfs, illuminant) # Passage de la densité spectral au trismultus
+        XYZ[i] = colour.sd_to_XYZ(sd, cmfs, illuminant)/100 # Passage de la densité spectral au trismultus
     return(XYZ)
     
 def AffichageCIE1931(Liste, Legende, TITRE='CIE1931', Marqueur='', Fleche=True,
@@ -475,6 +486,8 @@ def AffichageCIE1931(Liste, Legende, TITRE='CIE1931', Marqueur='', Fleche=True,
     
     Marqueur=mono2tab(Marqueur, np.size(Liste))    
     tristimulus=Calcul_XYZ(Liste, Legende)
+    saveDATACIE_XYZ(TITRE[:-8], Legende, tristimulus[:, 0], tristimulus[:, 1],
+                    tristimulus[:, 2])
     
     for i in np.arange(0, np.size(Liste)):
         XYZ=tristimulus[i]
@@ -505,6 +518,7 @@ def AffichageCIE1931(Liste, Legende, TITRE='CIE1931', Marqueur='', Fleche=True,
     plt.legend()
 
     if show: Sav_fig(TITRE, colorplot=True)
+    saveDATACIE_xy(TITRE[:-8], Legende, xtable, ytable)
     
     return(xtable, ytable)
 
@@ -572,7 +586,7 @@ def Affichage_Lab2D(Liste, Legende, TITRE='Lab', Marqueur='', SHOW=True):
     ax2.grid()
  
     #fig.tight_layout()
-    if SHOW : Sav_fig(TITRE)
+    if SHOW : Sav_fig(TITRE, Tight=False)
     return(Lab_liste)
         
 
@@ -642,6 +656,9 @@ def Affichage_Lab3D(Liste, Legende, TITRE='Lab3D', Marqueur='', SHOW=True):
  
     #fig.tight_layout()
     if SHOW : Sav_fig(TITRE)
+    
+    saveDATACIE_LAB(TITRE[0:-6], Legende, L, a, b)
+    
     return(Lab_liste)
 
 def Calcul_BeerLambert_XYZ(Fichier, coeflim=[0.1, 5]):
@@ -692,7 +709,7 @@ def Calcul_BeerLambert_XYZ(Fichier, coeflim=[0.1, 5]):
         cmfs = colour.colorimetry.MSDS_CMFS_STANDARD_OBSERVER['CIE 1931 2 Degree Standard Observer'] # Réfence pour le calcul tu trimultus
         illuminant = colour.SDS_ILLUMINANTS['D65']
         
-        XYZ[i] = colour.sd_to_XYZ(sd, cmfs, illuminant)
+        XYZ[i] = colour.sd_to_XYZ(sd, cmfs, illuminant)/100
         
         if coef==1: ref_XYZ=XYZ[i]
 
@@ -763,7 +780,7 @@ def Courbe_BeerLambert_XY(Fichier, Legende, TITRE='CIE1931', fondCIE=False,
     plt.legend(bbox_to_anchor = [1, 1])
 
     if show: Sav_fig(TITRE, colorplot=True)
-       
+    
     return(xtable, ytable)
     
     
@@ -829,7 +846,6 @@ def Courbe_BeerLambert_Lab3D(Fichier, Legende='', TITRE='Lab', lc_lim=[0.1, 5], 
 
     plt.legend()
  
-
     if show : Sav_fig(TITRE)
     return(L,a,b)  
   
@@ -893,7 +909,7 @@ def wavelength_to_rgb(wavelength, gamma=0.8):
 def Affichage_ID20(Liste, Legende, Autoaxe=True, Xlim=[0, 800], Ylim=[0, 1],
                   TITRE='superposition', linewidth=1.5, Modeaff='default',
                   modecouleurs='auto', optionplot='', SHOW=True, GRAPHOUT=1,
-                  newgraph=True):
+                  newgraph=True, REPsave='Graph'):
  
     
     Legende=mono2tab(Legende, np.size(Liste))
@@ -951,7 +967,7 @@ def Affichage_ID20(Liste, Legende, Autoaxe=True, Xlim=[0, 800], Ylim=[0, 1],
     ax1=plt.gca()
     fig=plt.gcf()   
 
-    if SHOW : Sav_fig(TITRE)
+    if SHOW : Sav_fig(TITRE, REPsave)
     
     return(fig)       
         

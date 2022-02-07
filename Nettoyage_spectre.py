@@ -181,7 +181,7 @@ def fit_OMCT(X, Y, NOM, removenaninf=True):
     text_file.write(DATA)
     
     text_file.close()
-    return(X, Y_corr) #On retourne le spectre corrigé
+    return(X_ori, Y_corr) #On retourne le spectre corrigé
 
 def filtrage_gauss(X, Y, NOM, zoomfig ='auto', sigma=2):
     '''
@@ -295,20 +295,21 @@ def filtrage_gauss(X, Y, NOM, zoomfig ='auto', sigma=2):
         
     return(X, Ygauss)
 
-def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet'):
+def Remontage_IR_VIS(X_BAS, Y_BAS, X_HAUT, Y_HAUT, mode='Perkin', X=0,Y=0,
+                     NOM='pouet', VISsurNIR=False):
     '''
     Cette fonction sert à remonter deux partie de courbe au même niveau
-    car issu de deux détecteur/spectro différent 
+    car issu de deux détecteur/spectro différent, par défaut on corrige l'IR sur le VIS
 
     Parameters
     ----------
-    X_IR : TYPE
+    X_BAS : TYPE
         DESCRIPTION.
-    Y_IR : TYPE
+    Y_BAS : TYPE
         DESCRIPTION.
-    X_VIS : TYPE
+    X_HAUT : TYPE
         DESCRIPTION.
-    Y_VIS : TYPE
+    Y_HAUT : TYPE
         DESCRIPTION.
     mode : TYPE, optional
         Perkin ou spectroportable (choix de limite suplémentaire). The default is 'Perkin'.
@@ -321,11 +322,11 @@ def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet
 
     Returns
     -------
-    Y_IRDelta : TYPE
+    Y_BASDelta : TYPE
         Y remonté.
-    interpo_limIR : TYPE
+    interpo_limBAS : TYPE
         limite pour les IR.
-    interpo_limVIS : TYPE
+    interpo_limHAUT : TYPE
         limite pour le VIS.
 
     '''
@@ -355,25 +356,39 @@ def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet
         limIR_haute = 10000;
         limVIS = 11000; # 
         limVIS_basse = 9800;
-        X = np.concatenate([X_IR, X_VIS]);
-        Y = np.concatenate([Y_IR, Y_VIS]);
+        X = np.concatenate([X_BAS, X_HAUT]);
+        Y = np.concatenate([Y_BAS, Y_HAUT]);
         point_jonction = 9800;
-        
-    elif mode == 'Portable UV':
-        limVIS_bas= 9000;   # limite pour l'ajustement IR
-        limVIS_haut = 12000; # 
-        limUV_bas = 10000;
-        limUV_haut = 12000;
-        point_jonction = 23200;
-        X = np.concatenate([X_IR, X_VIS]);
-        Y = np.concatenate([Y_IR, Y_VIS]);
+   
+   
+    elif mode == 'PortableUV':
+        limVIS_bas= 24000;   # limite pour l'ajustement UV
+        limVIS_haut = 26000; # 
+        limUV_bas = 25500;
+        limUV_haut = 28000;
+        point_jonction = 25500;
+        X = np.concatenate([X_BAS, X_HAUT]);
+        Y = np.concatenate([Y_BAS, Y_HAUT]);
         Xmin=20000; # Affichage en x min en cm-1
-        Xmax=30000;# Affichage en x max en cm-1
-
+        Xmax=34000;# Affichage en x max en cm-1
+    # print('\n\n\n X,Y = ')    
+    # print(X,Y)    
+    # print('\n\n\n')
+    
     Borne=np.logical_and(X>Xmin, X<Xmax)
-    Ymin = 0
+    
+    if np.nanmin(Y[Borne]) < 0 : # Réglage des borne d'affichage en Y
+        Ymin = np.nanmin(Y[Borne])
+        Ymin = Ymin + 0.2*Ymin
+    else :
+        Ymin = 0
+    
+   
+    
     Ymax = np.nanmax(Y[Borne])
     Ymax = Ymax+0.2*Ymax
+    
+    if Ymax == np.inf : Ymax=4
     
     plt.figure(figsize=FIGsize, dpi=DPI)
     plt.plot(X, Y, label=NOM)
@@ -390,8 +405,8 @@ def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet
             limVIS=int(input('Rentrer la limite partie haute VIS pour l ajustement (defaut ='
                                + str(limVIS) +')\n') or limVIS);
             
-            interpo_limIR = X_IR > limIR
-            interpo_limVIS = X_VIS < limVIS 
+            interpo_limBAS = X_BAS > limIR
+            interpo_limHAUT = X_HAUT < limVIS 
 
         if mode == 'PortableIR' :
              limIR=int(input('Rentrer la limite partie basse IR pour l ajustement (defaut ='
@@ -402,27 +417,29 @@ def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet
                            + str(limVIS_basse) +')\n') or limVIS_basse);
              limVIS=int(input('Rentrer la limite partie haute VIS pour l ajustement (defaut ='
                                + str(limVIS) +')\n') or limVIS);
-             interpo_limIR = np.logical_and(X_IR > limIR,  X_IR < limIR_haute)
-             interpo_limVIS = np.logical_and(X_VIS < limVIS, X_VIS > limVIS_basse)
-
+             interpo_limBAS = np.logical_and(X_BAS > limIR,  X_BAS < limIR_haute)
+             interpo_limHAUT = np.logical_and(X_HAUT < limVIS, X_HAUT > limVIS_basse)
+             point_jonction = limVIS_basse
+             
         if mode == 'PortableUV' :
              limUV_bas=int(input('Rentrer la limite partie basse UV pour l ajustement (defaut ='
                                + str(limUV_bas) +')\n') or limUV_bas);
-             limUV_haut=int(input('Rentrer la limite partie haute UV pour l ajustement (defaut ='
+             limUV_haute=int(input('Rentrer la limite partie haute UV pour l ajustement (defaut ='
                            + str(limUV_haut) +')\n') or limUV_haut);
-             limVIS_bas=int(input('Rentrer la limite partie basse VIS pour l ajustement (defaut ='
+             limVIS_basse=int(input('Rentrer la limite partie basse VIS pour l ajustement (defaut ='
                                + str(limVIS_bas) +')\n') or limVIS_bas);
-             limVIS_haut=int(input('Rentrer la limite partie haute VIS pour l ajustement (defaut ='
+             limVIS_haute=int(input('Rentrer la limite partie haute VIS pour l ajustement (defaut ='
                            + str(limVIS_haut) +')\n') or limVIS_haut);     
              
-             interpo_limIR = np.logical_and(X_IR > limIR,  X_IR < limIR_haute)
-             interpo_limVIS = np.logical_and(X_VIS < limVIS, X_VIS > limVIS_basse)
-
+             interpo_limHAUT = np.logical_and(X_HAUT > limUV_bas, X_HAUT  < limUV_haute)
+             interpo_limBAS = np.logical_and(X_BAS < limVIS_haute, X_BAS > limVIS_basse)
+             point_jonction = limVIS_haute
+             
         plt.figure(figsize=FIGsize, dpi=DPI)
         
         plt.plot(X, Y, label='Original')
-        plt.plot(X_IR[interpo_limIR], Y_IR[interpo_limIR], label='Y_IR_ajustement');
-        plt.plot(X_VIS[interpo_limVIS], Y_VIS[interpo_limVIS], label='Y_VIS_ajustement');
+        plt.plot(X_BAS[interpo_limBAS], Y_BAS[interpo_limBAS], label='Y_BAS_ajustement');
+        plt.plot(X_HAUT[interpo_limHAUT], Y_HAUT[interpo_limHAUT], label='Y_HAUT_ajustement');
         plt.xlim([Xmin, Xmax])
         plt.ylim([Ymin, Ymax])
         plt.grid()
@@ -438,13 +455,13 @@ def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet
     # On mets la premièrer partie de la courbe au niveau de la seconde,
     # car le Photomultiplicateur du visible donne un valeur "vrai" et on corrige l'InGaAs dessus
     
-    Delta=np.mean(Y_VIS[:3])-np.mean(Y_IR[-3:]) # Decallage entre les deux courbe pour le cas 2
+    Delta=np.mean(Y_HAUT[:3])-np.mean(Y_BAS[-3:]) # Decallage entre les deux courbe pour le cas 2
     ordre_fit = 2
 
     while (Remonte_OK == 0):  #Partie ou on remonte la partie gauche (les IR) des données pour coller l'InGaAs sur le PM  
         
         Remonte = int(input('Selectionner la methode de remonté de l\InGaAs sur le PM :'+'(default'+str(Remonte)+')\n'
-                      +'\n 1 fit polynomiale à droite et moyenne 3 dernier point gauche\n'
+                      +'\n1 fit polynomiale à droite et moyenne 3 dernier point gauche\n'
                       +' 2 réhausser à la main\n'
                       +' 3 fit des deux cotés du même ordre (ordre 0 = valeur moyenne)\n')
                         or Remonte)
@@ -454,16 +471,16 @@ def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet
                 ordre_fit=float(input('rentrer l\'ordre du polynome qui va servir à ajuster la remontée (default = '
                                       +str(ordre_fit)+')\n') or ordre_fit)
     
-                fit_delta = np.polyfit(X_VIS[interpo_limVIS], Y_VIS[interpo_limVIS], ordre_fit) #fit pour remonter la courbe
+                fit_delta = np.polyfit(X_HAUT[interpo_limHAUT], Y_HAUT[interpo_limHAUT], ordre_fit) #fit pour remonter la courbe
                 
-                regY_VIS= np.poly1d(fit_delta)
+                regY_HAUT= np.poly1d(fit_delta)
                 
-                #Delta=regY_VIS(X_IR[-1])-Y_IR[-1]; #
-                Delta=regY_VIS(np.mean(X_IR[-3:]))-np.mean(Y_IR[-3:]); #
+                #Delta=regY_HAUT(X_BAS[-1])-Y_BAS[-1]; #
+                Delta=regY_HAUT(np.mean(X_BAS[-3:]))-np.mean(Y_BAS[-3:]); #
                 
-                Y_IRDelta=Y_IR+Delta
+                #Y_BASDelta=Y_BAS+Delta
                 plt.figure(figsize=FIGsize, dpi=DPI)
-                plt.plot(X_VIS, regY_VIS(X_VIS), '-', label='fit pour la remonté')
+                plt.plot(X_HAUT, regY_HAUT(X_HAUT), '-', label='fit pour la remonté')
             
             except LinAlgError :
                 print('Le fit ne converge pas')
@@ -471,7 +488,7 @@ def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet
         elif(Remonte == 2):
 
             Delta=float(input('Rentrer le Delta entre les deux partie (defaut =' + str(Delta) + ')\n') or Delta)
-            Y_IRDelta=Y_IR+Delta
+            #Y_BASDelta=Y_BAS+Delta
             plt.figure(figsize=FIGsize, dpi=DPI)
             
         elif(Remonte == 3) :
@@ -483,29 +500,40 @@ def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet
                     point_jonction=float(input('Rentrer la valeur en X du point de jonction (default = '
                                                + str(point_jonction)+ ')\n') or point_jonction)
                 
-                fit_VIS = np.polyfit(X_VIS[interpo_limVIS], Y_VIS[interpo_limVIS], ordre_fit) #fit pour remonter la courbe
-                regY_VIS= np.poly1d(fit_VIS)
+                fit_VIS = np.polyfit(X_HAUT[interpo_limHAUT], Y_HAUT[interpo_limHAUT], ordre_fit) #fit pour remonter la courbe
+                regY_HAUT= np.poly1d(fit_VIS)
                 
-                fit_IR = np.polyfit(X_IR[interpo_limIR], Y_IR[interpo_limIR], ordre_fit) #fit pour remonter la courbe
-                regY_IR= np.poly1d(fit_IR)
+                fit_IR = np.polyfit(X_BAS[interpo_limBAS], Y_BAS[interpo_limBAS], ordre_fit) #fit pour remonter la courbe
+                regY_BAS= np.poly1d(fit_IR)
                 
                 if ordre_fit == 0:
-                    Delta=regY_VIS(X_IR[-1])-regY_IR(X_VIS[-1]); #
+                    Delta=regY_HAUT(X_BAS[-1])-regY_BAS(X_HAUT[-1]); #
                 else:
-                     Delta=regY_VIS(point_jonction)-regY_IR(point_jonction); #
+                     Delta=regY_HAUT(point_jonction)-regY_BAS(point_jonction); #
               
-                Y_IRDelta=Y_IR+Delta
+                #Y_BASDelta=Y_BAS+Delta
                 
                 plt.figure(figsize=FIGsize, dpi=DPI)
-                plt.plot(X_VIS, regY_VIS(X_VIS), '--', label='fit VIS pour la remonté')
-                plt.plot(X_IR, regY_IR(X_IR), '--', label='fit IR pour la remonté')
+                plt.plot(X_HAUT, regY_HAUT(X_HAUT), '--', label='fit VIS pour la remonté')
+                plt.plot(X_BAS, regY_BAS(X_BAS), '--', label='fit IR pour la remonté')
             except:
                 print("Ne marche pas, utilise une autre methodes\n")
-                Y_IRDelta=Y_IR
-
+                #Y_BASDelta=Y_BAS
         plt.plot(X, Y, label=NOM + 'Original')
-        plt.plot(X_IR, Y_IRDelta, '-', label='1ere parti remonté')
-        plt.plot(X_VIS, Y_VIS, '-', label='2eme parti')
+        
+        if VISsurNIR : # On remonte le VIS sur le NIR, pas commun
+            Y_BASDelta=Y_BAS
+            Y_HAUTDelta = Y_HAUT - Delta
+            plt.plot(X_BAS, Y_BAS, '-', label='1ere partie')
+            plt.plot(X_HAUT, Y_HAUTDelta, '-', label='2eme partie remontée')
+        
+        else:  # Classique, on corrige le NIR sur le VIS.
+            Y_BASDelta=Y_BAS+Delta
+            Y_HAUTDelta = Y_HAUT
+            plt.plot(X_BAS, Y_BASDelta, '-', label='1ere partie remontée')
+            plt.plot(X_HAUT, Y_HAUT, '-', label='2eme partie')
+
+
         plt.xlim([Xmin, Xmax])
         plt.ylim([Ymin, Ymax])
         plt.grid()
@@ -514,7 +542,7 @@ def Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS, mode='Perkin', X=0,Y=0,NOM='pouet
         
         Remonte_OK = int(input('La correction est-elle correcte ? \n') or 1)
  
-    return (Y_IRDelta, interpo_limIR, interpo_limVIS)
+    return (Y_HAUTDelta, Y_BASDelta, interpo_limBAS, interpo_limHAUT)
 
 def reconstruction_saut(X_IR, Y_IRDelta, X_VIS, Y_VIS, interpo_limIR, interpo_limVIS, Xinterpo, X, Y, NOM):
     '''
@@ -686,7 +714,7 @@ def correction_saut_detect(X, Y, NOM, mode='PERKIN_std'):
                                           str(Xfincoup) + ')\n') or Xfincoup);
 
         if (sep_OK) : 
-            Y_IRDelta, interpo_limIR, interpo_limVIS = Remontage_IR_VIS(XR1, YR1, XR2, YR2,
+            Y_VISDelta, Y_IRDelta, interpo_limIR, interpo_limVIS = Remontage_IR_VIS(XR1, YR1, XR2, YR2,
                                                                         mode, X,Y, NOM)
             if mode == 'PERKIN_micro':
                 Ycorr = reconstruction_saut(XR1, Y_IRDelta, XR2, YR2, interpo_limIR,
@@ -795,7 +823,8 @@ def Recollage_portable(X_IR, Y_IRDelta, X_VIS, Y_VIS, interpo_limIR, interpo_lim
         Recol_OK=True;
     return(Xcorr, Ycorr)
 
-def Traitement_spectro_portable(CHEMIN_IR, CHEMIN_VIS, NOM='pouet', Addition_Tr='0'):
+def Traitement_spectro_portable(CHEMIN_IR, CHEMIN_VIS, NOM='pouet',
+                                Addition_Tr='0', VISsurNIR=False, mode='IR'):
     '''
     Cette fonction déclanche le traitement des spectres issu du spectro portable
 
@@ -809,6 +838,8 @@ def Traitement_spectro_portable(CHEMIN_IR, CHEMIN_VIS, NOM='pouet', Addition_Tr=
         DESCRIPTION. The default is 'pouet'.
     Addition_Tr : TYPE, optional
         DESCRIPTION. The default is '0'.
+    mode : STRING, optional
+        Choix de travailler en UV ou en IR, defaut : IR
 
     Returns
     -------
@@ -818,21 +849,23 @@ def Traitement_spectro_portable(CHEMIN_IR, CHEMIN_VIS, NOM='pouet', Addition_Tr=
     #print(Addition_Tr)
     #plt.ion() #Nécéssaire pour afficher les figures en %matplolib  
 
-    COUPURE_UV=300;
+    if mode == 'UV' : COUPURE_UV=280;
+    else            : COUPURE_UV=300;
      
     FIGsize=(10,6)
     DPI=120
-    SHIFT_NIRQUEST=0 # décallage en nm entre le NIRQUEST et le PERKIN.
+    SHIFT_NIRQUEST=0 # décallage en nm entre le NIRQUEST et le PERKIN
+    # utiliser si spectro décalibré
     
     Trait_OK = False;
     
     
     Xnm_IR, Ytr_IR=Readspectre(CHEMIN_IR) # Lecture fichier IR
     
-    Xnm_IR=Xnm_IR - SHIFT_NIRQUEST # On corrige le NIRQUEST d'un mauvaise calibration.
+    # Xnm_IR=Xnm_IR - SHIFT_NIRQUEST # On corrige le NIRQUEST d'un mauvaise calibration.
     
-    if SHIFT_NIRQUEST:
-        print('ATTENTION PARTIE NIR DECALLER DE ' + str(SHIFT_NIRQUEST)+ ' NM')
+    # if SHIFT_NIRQUEST:
+    #     print('ATTENTION PARTIE NIR DECALLER DE ' + str(SHIFT_NIRQUEST)+ ' NM')
     
     X_IR = (1/(Xnm_IR*1E-7))[::-1]; #
     Y_IR = (- np.log10(Ytr_IR+Addition_Tr))[::-1];# Si data en %T
@@ -851,10 +884,19 @@ def Traitement_spectro_portable(CHEMIN_IR, CHEMIN_VIS, NOM='pouet', Addition_Tr=
     
     while not Trait_OK:
         print(NOM)
-        Y_IRDelta, interpo_limIR, interpo_limVIS = Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS,
-                                                                    'PortableIR', X=0,Y=0,NOM=NOM)
-       
-        Xcorr, Ycorr = Recollage_portable(X_IR, Y_IRDelta, X_VIS, Y_VIS, interpo_limIR, interpo_limVIS, NOM)
+        
+        if mode == 'UV':
+            Y_VISDelta, Y_IRDelta, interpo_limIR, interpo_limVIS = Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS,
+                                                                        'PortableUV', X=0,Y=0,NOM=NOM,
+                                                                        VISsurNIR=VISsurNIR)
+        
+        else :
+            Y_VISDelta, Y_IRDelta, interpo_limIR, interpo_limVIS = Remontage_IR_VIS(X_IR, Y_IR, X_VIS, Y_VIS,
+                                                                    'PortableIR', X=0,Y=0,NOM=NOM,
+                                                                    VISsurNIR=VISsurNIR)
+
+        Xcorr, Ycorr = Recollage_portable(X_IR, Y_IRDelta, X_VIS, Y_VISDelta,
+                                          interpo_limIR, interpo_limVIS, NOM)
     
         plt.figure(figsize=FIGsize, dpi=DPI)
         
@@ -1012,6 +1054,7 @@ def SavCSV(X, Y, NOM, Legende='', Dossier='./Data_corr', ENTETE='\n X en nm; Y e
     HEADER =NOM+ ';' +Legende + ENTETE
     
     Save=np.array([X, Y]).transpose() # On met sous la forme XY en colonne. DEPRECIER ?
+
     #Save=np.concatenate((X[np.newaxis,:], Y[np.newaxis,:])).transpose() à vérifier la fiabilité
     np.savetxt(Dossier+os.sep+NOM, Save, delimiter=';', header=HEADER, comments='');
     
@@ -1045,6 +1088,23 @@ def Reflexion(X,Y,Legend, SHOW=True)    :
         
     return(Ycorr)
         
+def Sub_baseline (X,Y,Legend) :
+    '''
+    Cette fonction permet de calculer le spectre sans la ligne de base
+    
+    Returns
+    -------
+    None.
+    '''
+    INDEXUV=X>370
+    X=X[INDEXUV]
+    Y=Y[INDEXUV]
+    
+    Xbaseline, Ybaseline = baseline_Rubberband(X, Y)
+    baseline=np.interp(X, Xbaseline, Ybaseline)
+    Ycorr=Y-baseline
+    
+    return(Ycorr);
 
 def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Liste_refN='', Addition_Tr=0):
     '''
@@ -1063,7 +1123,7 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Liste_refN='', Addi
         3 pour filtrer le bruit haute fréquence (filtre gaussien),
         4 pour effectué une correction du saut de détecteur du Perkin, avec filtrage et soustraction du blanc.
         5 pour passer une fichier d'ABS en Tr
-        6 pour joindre les spectres issu du spectro portable
+        6 pour joindre les spectres issu du spectro portable, -6 pour VIS sur NIR
         7 pour extraire la ligne de base avec la méthode de rubberband
         8 pour additionner un spectre en absorbance
         9 pour soustraitre deux spectre normalisé et interpolé
@@ -1085,7 +1145,7 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Liste_refN='', Addi
     Liste_corr=[]
     Dossier='./Data_corr'
     ENTETE = '\n X en nm; Y en %T'
-
+    RAJOUT = ''
     
     if np.size(Addition_Tr) == 1: Addition_Tr=(np.zeros(np.size(Liste)) + Addition_Tr)
     
@@ -1131,7 +1191,7 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Liste_refN='', Addi
 
                 Y_corr=Y#-I100;
                 #Y_corr= filtrage_gauss(X, Y_corr, Legende[i])
-                Y_corr= correction_saut_detect(X, Y_corr, Legende[i], mode='Perkin_micro')
+                Y_corr= correction_saut_detect(X, Y_corr, Legende[i], mode='PERKIN_micro')
                 
                 #Xsave, Y_corr= filtrage_gauss(X, Y_corr, Legende[i] + 'corr', 2)
                 #Xsave = 1/(Xsave*1E-7);
@@ -1143,11 +1203,39 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Liste_refN='', Addi
                 Fichier_corr=nomfichier[0:-4] + Corr2Str(correction[i])
                 Dossier = './Data_trait'
              
-            elif(correction[i]==6): # Spectro portable, pour le raccord bien penser à mettre le spectre IR dans la Liste et le VIS dans la ref   
-                Xnm, Y_corr=Traitement_spectro_portable(Liste_ref[i], Liste[i], Legende[i], Addition_Tr[i])
+            elif(correction[i] == 6): # Spectro portable, pour le raccord bien penser à mettre le spectre IR dans la Liste et le VIS dans la ref   
+                Xnm, Y_corr=Traitement_spectro_portable(Liste_ref[i], Liste[i],
+                                                        Legende[i],Addition_Tr[i],
+                                                        VISsurNIR=False, mode='IR')
                 Xsave = Xnm;
                 
                 Fichier_corr=nomfichier[0:-4]+ Corr2Str(correction[i])
+                
+            elif(correction[i] == -6): # Idem 6 mais on remonte VIS sur NIR   
+                Xnm, Y_corr=Traitement_spectro_portable(Liste_ref[i], Liste[i],
+                                                        Legende[i], Addition_Tr[i],
+                                                        VISsurNIR=True, mode='IR')
+                Xsave = Xnm;
+                
+                Fichier_corr=nomfichier[0:-4]+ Corr2Str(correction[i])
+                RAJOUT = 'VIS remonté sur NIR'
+            
+            elif(correction[i] == 66): # On colle UV sur VIS-NIR 
+                (cheminfichier, nomfichier) = os.path.split(Liste[i])
+                Liste_temp='./Data_corr'+os.sep+nomfichier[:-4]+Corr2Str(6)
+                # Recherche fichier joint NIR (correction 6 ou -6)
+                try:
+                    Xnm, Y_corr=Traitement_spectro_portable(Liste_temp, Liste_refN[i],
+                                                        Legende[i], Addition_Tr[i],
+                                                        VISsurNIR=True, mode='UV')
+                except OSError :
+                    raise ValueError('\n\n fais la correction 6 (jonction NIR) avant, bisous tocard \n\n')
+                
+                Xsave = Xnm;
+                
+                Fichier_corr=nomfichier[:-4]+Corr2Str(6)[:-4] + Corr2Str(correction[i])
+                RAJOUT = 'Rajout ' + Liste_refN[i]
+            
             
             elif(correction[i]==7): #extraction ligne de base
                 INDEXUV=Xnm>330
@@ -1190,7 +1278,7 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Liste_refN='', Addi
                 
                 Fichier_corr=nomfichier[0:-4] + Corr2Str(correction[i])
             
-            elif(correction[i]==11) :
+            elif(correction[i]==11) : # correction saut std PERKIN
                 # Xnm_ref, Ytr_ref=Readspectre(Liste_ref[i])
                 # I100 = -np.log10(Ytr_ref)
                 # Y_corr=Y-I100;
@@ -1199,11 +1287,22 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Liste_refN='', Addi
                 
                 Fichier_corr=nomfichier[0:-4] + Corr2Str(correction[i])
             
-            elif(correction[i]==12) :
+            elif(correction[i]==12) : # Soustration reflexion calcul
                 Y_corr = Reflexion(X, Y, Legende[i])
                 
                 Fichier_corr=nomfichier[0:-4] + Corr2Str(correction[i])
                 
+            elif(correction[i]==13) : # soustraction ligne de base
+                Y_corr = Sub_baseline(X, Y, Legende[i])
+                
+                Fichier_corr=nomfichier[0:-4] + Corr2Str(correction[i])    
+            
+                       
+            elif(correction[i]==15) : #enlève inf et nan
+                Xsave, Y_corr = removeInfNan(X,Y, Legende[i])
+                      
+                Fichier_corr=nomfichier[0:-4] + Corr2Str(correction[i])     
+            
             else:
                 raise ValueError('La correction demandée n\'est pas implémentée, vérifier le fichier d\'input')
             
@@ -1212,6 +1311,6 @@ def Nettoyage_spectre(Liste, Legende, Liste_ref, correction, Liste_refN='', Addi
             if not (correction[i] == 10000):
                 Y_save=np.power(10, -Y_corr); # On repasse en %T pour assurer la comptabilité avec le reste des scripts
 
-            SavCSV(Xsave, Y_save, Fichier_corr, Legende[i], Dossier, ENTETE);
+            SavCSV(Xsave, Y_save, Fichier_corr, Legende[i]+RAJOUT, Dossier, ENTETE);
 
     return(Liste_corr)

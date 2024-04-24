@@ -1,1 +1,16 @@
 ./conda install -c conda-forge colour-science 
+
+pip install rampy, gcvspline, cvxpy
+# !! besoin d'avoir gfortran
+
+conda install -c conda-forge mpltern
+#conda install -c "conda-forge/label/cf202003" mpltern
+# https://mpltern.readthedocs.io/en/latest/
+
+
+conda install -c conda-forge ternary-diagram
+#https://github.com/yu9824/ternary_diagram
+
+
+conda install -c conda-forge mpld3
+# pour sauver en HTML les figures matlplolib

@@ -75,6 +75,26 @@ MasseMol ={
     "Rb2O"   : 186.935,
     "Sb2O5"  : 323.52,
     "HgO"    : 216.59,
+    "SnO"    : 134.71,
+    "SO2"    : 64.06,
+    "UO2"    : 270.03,
+    "GaO"    : 155.445,
+    "Nb2O3"  : 233.8110,
+    "ThO2"   : 264.04,
+    "PrO2"   : 172.91,
+    "HfO2"   : 210.49,
+    "MoO"    : 127.96,
+    "Cs2O"   : 281.81,
+    "Sm2O3"  : 348.72,
+    "Dy2O3"  : 372.998,
+    "Yb2O3"  : 394.08,
+    "WO"     : 199.84,
+    "Eu2O3"  : 351.926,
+    "Ho2O3"  : 377.86,
+    "Tb2O3"  : 365.848,
+    "Ta2O3"  : 409.89396,
+    "Lu2O3"  : 397.9318,
+    "Tm2O3"  : 385.86662,
     "H" : 1.007,
     "He" : 4.002,
     "Li" : 6.941,
@@ -343,55 +363,166 @@ def ConvertMassOx (MassOxDep):
     
     return MassOxFin
 
-#%%% Utilisation masse to mol
-if False :
-    Densite = 2.564
-    Pmassique = 0.9901
-    Oxyde_ori = 'MnO2'
+
+def CTE_calculation_APPEN(compo_mol):
+    '''
+    Tirer de Appen [21] du Scholze
+
+    Parameters
+    ----------
+    compo_mol : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    None.
+
+    '''
     
-    CompoMasse = {'SiO2': 57, 'Na2O' : 17.10, 'CaO': 20.90,'MnO2' : 5.00}
+    coef_CTE ={
+        "LiO" : 27,
+        "Na2O" : 39.5,
+        "BeO" 	 : 4.5,
+        "MgO"    : 6.0,
+        "CaO"    : 13,
+        "SrO" : 16,
+        "BaO" : 20,
+        "Al2O3" : -3.0,
+        "Ga2O3" : -2.0,
+        "ZrO2" : -6.0,
+        "P2O5" : 14.0,
+        "Sb2O3" : 7.5,
+        "CuO" : 3.0,
+        "ZnO" : 5.0,
+        "CdO" : 11.5,
+        "SnO2" : -4.5,
+        "MnO" : 10.5,
+        "FeO" : 5.5,
+        "CoO" : 5.0,
+        "NiO" : 5.0
+        }
     
-    CompoMol = CompoMasse
-    CompoMasse = pd.Series(CompoMasse)
+
     
-    Compovoulu = ['SiO2', 'Na2O', 'MnO']
+    try : compo_mol["BaO"] 
+    except KeyError : compo_mol["BaO"]=0
+    try : compo_mol["SrO"] 
+    except KeyError : compo_mol["SrO"]=0
+    try : compo_mol["CdO"] 
+    except KeyError : compo_mol["CdO"]=0
+    try : compo_mol["SrO"] 
+    except KeyError : compo_mol["SrO"]=0
+    try : compo_mol["PbO"] 
+    except KeyError : compo_mol["PbO"]=0
+    try : compo_mol["CaO"] 
+    except KeyError : compo_mol["CaO"]=0
+    try : compo_mol["Li2O"] 
+    except KeyError : compo_mol["Li2O"]=0
+    try : compo_mol["MgO"] 
+    except KeyError : compo_mol["MgO"]=0
+    try : compo_mol["ZnO"] 
+    except KeyError : compo_mol["ZnO"]=0
+    try : compo_mol["B2O3"] 
+    except KeyError : compo_mol["B2O3"]=0
+    try : compo_mol["K2O"] 
+    except KeyError : compo_mol["K2O"]=0
+    try : compo_mol["Na2O"] 
+    except KeyError : compo_mol["Na2O"]=0
+
     
     
-    #%%% Utilisation mol to masse
+    if compo_mol["K2O"] < 1: coef_CTE["K2O"]= 42
+    else :  coef_CTE["K2O"]= 46.5
     
-    Compo = {'B2O3': 64.67, 'Li2O' : 32.33, 'NiO': 3}
-    Compo = pd.Series(Compo)
+    if compo_mol["B2O3"] > 0:  
+        psi = (compo_mol["Na2O"] + compo_mol["K2O"] + compo_mol["BaO"]) + 0.7*(compo_mol['CaO'] + compo_mol['SrO'] + compo_mol['CdO'] + compo_mol['PbO']) + 0.3*(compo_mol['Li2O'] + compo_mol['MgO'] + compo_mol['ZnO']) - compo_mol['Al2O3']/compo_mol['B2O3']
+        if psi > 4 : coef_CTE["B2O3"] = -5.
+        else : coef_CTE["B2O3"] = (- 1.25) * psi
     
-    CompoMol = Compo
+    if compo_mol["SiO2"] >=67 : coef_CTE["SiO2"] = 10.5 - 0.1*compo_mol["SiO2"]
+    else : coef_CTE["SiO2"] = 3.8
     
-    CompoMass = Mol2masse(CompoMol)
+    if compo_mol["SiO2"] >= 50 and compo_mol["SiO2"] <= 80 : coef_CTE["TiO2"] = 10.5 - 0.15*compo_mol["SiO2"]
+    elif compo_mol["SiO2"] >= 80 : coef_CTE["TiO2"] = -1.5
+    elif compo_mol["SiO2"] <= 50 : coef_CTE["TiO2"] = 3.0      
+
+    sumR2O = compo_mol["K2O"] + compo_mol["Na2O"] + compo_mol["Li2O"]
+    sumROandRmOn = compo_mol.drop(["K2O", "Li2O", "Na2O"]).sum()
+
+    if sumR2O < 3 : coef_CTE["PbO"] = 13
+    elif sumROandRmOn/sumR2O > 1/3 : coef_CTE["PbO"] = 13
+    else : coef_CTE["PbO"] = 11.5 + 0.5*sumR2O
+    
+    
+    coef_CTE = pd.Series(coef_CTE)
+    return(np.sum(compo_mol/100*coef_CTE))
+    
+    
+
+
+# %%% Utilisation masse to mol
+# if False :
+#     Densite = 2.564
+#     Pmassique = 0.9901
+#     Oxyde_ori = 'MnO2'
+    
+#     CompoMasse = {'SiO2': 57, 'Na2O' : 17.10, 'CaO': 20.90,'MnO2' : 5.00}
+    
+#     CompoMol = CompoMasse
+#     CompoMasse = pd.Series(CompoMasse)
+    
+#     Compovoulu = ['SiO2', 'Na2O', 'MnO']
+    
+    
+#     #%%% Utilisation mol to masse
+    
+#     Compo = {'B2O3': 64.67, 'Li2O' : 32.33, 'NiO': 3}
+#     Compo = pd.Series(Compo)
+    
+#     CompoMol = Compo
+    
+#     CompoMass = Mol2masse(CompoMol)
     
     
     
     #%% Utilisation Formule2mol
     
-    Formule = {'Na': 0.1, 'Mn' : 0.1, 'Si': 0.2,'O' : 0.6}
-    Formule = {'Na': 0.69, 'Mg' : 0, 'Si': 0.65, 'O' : 56.26, 'Al' : 0.04, 'K' : 0.10, 'Ca' : 16.38, 'Cu' : 0.09, 'Sn' : 0.33, 'Sb' : 25.38, 'Pb' : 0 }
+#     Formule = {'Na': 0.1, 'Mn' : 0.1, 'Si': 0.2,'O' : 0.6}
+#     Formule = {'Na': 0.69, 'Mg' : 0, 'Si': 0.65, 'O' : 56.26, 'Al' : 0.04, 'K' : 0.10, 'Ca' : 16.38, 'Cu' : 0.09, 'Sn' : 0.33, 'Sb' : 25.38, 'Pb' : 0 }
     
-    Formule = {'Si' : 4, 'Na': 1.5*2, 'Ca' : 1.5, 'O' : 0}
+#     Formule = {'Si' : 4, 'Na': 1.5*2, 'Ca' : 1.5, 'O' : 0}
     
     
-    Formule = {'Ba' : 2, 'Mn': 5, 'H' : 4, 'O' : 12}
+#     Formule = {'Ba' : 2, 'Mn': 5, 'H' : 4, 'O' : 12}
     
-    Formule = {'Si' : 1, 'Fe': 2, 'O' : 4}
+#     Formule = {'Si' : 1, 'Fe': 2, 'O' : 4}
     
-    Formule = {'Mn' : 2, 'Si': 1, 'O' : 4}
+#     Formule = {'Mn' : 2, 'Si': 1, 'O' : 4}
     
-    Formule = pd.Series(Formule)
+#     Formule = pd.Series(Formule)
     
-    print(Formule)
-    CompoMol = Formule2MolOx(Formule)
-    print("\nComposition molaire :")
-    #print(CompoMol)
-    print (round(CompoMol*100, 2))
+#     print(Formule)
+#     CompoMol = Formule2MolOx(Formule)
+#     print("\nComposition molaire :")
+#     #print(CompoMol)
+#     print (round(CompoMol*100, 2))
     
-    print("\nComposition massique :")
-    print(Mol2masse(CompoMol))
+#     print("\nComposition massique :")
+#     print(Mol2masse(CompoMol))
     
+#%% Utilisation Calcul CTE :
+    
+#test validation :
+# compo_mol = {}
+# compo_mol['SiO2'] = 69.5
+# compo_mol['B2O3'] = 1.4
+# compo_mol['Al2O3'] = 4.2
+# compo_mol['Na2O'] = 10.8
+# compo_mol['K2O'] = 5.3
+# compo_mol['CaO'] = 7.8
 
+# compo_mol = pd.Series(compo_mol)
+
+# compo_mol = Masse2mol(compo_mol)
+# CTE = CTE_calculation_APPEN(compo_mol) #
 

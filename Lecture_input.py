@@ -25,6 +25,7 @@ except ModuleNotFoundError : pass
 try : from colour import plotting as cplot
 except ModuleNotFoundError : pass
 
+
 from Calcul_masse_mol_concentration import Pmass2concentrationMol
 
 #%% Utilitaire
@@ -213,7 +214,7 @@ def Readspectre(Fichier, skip_header=2, delimiter=';', colonne=1):
     except UnicodeDecodeError:
         Data = np.genfromtxt(Fichier, skip_header=skip_header, delimiter=delimiter, encoding='latin-1'); # si jamais l'encodage n'est pas UTF8
     X = Data[:, 0]
-    Y = Data[:, colonne]/100
+    Y = Data[:, colonne]#/100
 
     return([X, Y])
 
@@ -421,8 +422,11 @@ def Corr2Str_OAS(Correction_number):
     elif Correction_number == 123:
         Correction_NAME = '_cor_I00_detect_lampe.csv'
             
+    elif Correction_number == 1134:
+        Correction_NAME = '_cor_detecstd_lampe_filtre319.csv'
+        
     elif Correction_number == 1234:
-        Correction_NAME = '_cor_detect_lampe_filtre319.csv'
+        Correction_NAME = '_cor_detectmicro_lampe_filtre319.csv'
     
     elif Correction_number == 2:
        Correction_NAME = '_soustrait.csv'
@@ -467,6 +471,10 @@ def Corr2Str_OAS(Correction_number):
        #Correction_NAME = '_Tr.csv'
        Correction_NAME = '.csv'
     
+    elif Correction_number == 51:
+       #Correction_NAME = '_2nm.csv'
+       Correction_NAME = '.csv'
+      
     elif Correction_number == 6 or Correction_number == -6 :
         Correction_NAME = '_jointNIR.csv'
     
@@ -531,8 +539,9 @@ def Corr2folder_OAS(Correction_number):
     elif Correction_number == 23 :
         Dossier = './Data_corr_convexhull'
     
-    elif Correction_number == 5 :
+    elif Correction_number in [5, 51] :
         Dossier = './Data_traite'
+        
     
     elif Correction_number == 9 :
         Dossier = './baseline'
@@ -638,7 +647,7 @@ def Chemin2input_OAS(TITRE, CLEFDETRIE='', CHEMIN='.', LISTEDOSSIER=['Data_trait
                       LimiteSup     = mono2tab('', taille)
                       ))
     
-    SAVE=df.to_csv(sep=';', index=False);
+    SAVE=df.to_csv(sep=';', index=False, encoding="utf-8");
     
     print(SAVE)
     
@@ -1013,7 +1022,8 @@ def create_raman_txt(REP='.') :
 
     '''
     for file in list_folder_filter('*.tsf', '.', REP):
-        os.system('touch ' + file[:-4] + '.txt')
+        # os.system('touch ' + file[:-4] + '.txt')
+        open(file[:-4] + '.txt', "w").close()
             
     
 
@@ -1128,8 +1138,10 @@ def readinput_RAMAN(INPUTNAME='input.csv', comment = '#'):
     
     TITRE = INPUTNAME[6:-4]
 
-
-    Data=pd.read_csv(INPUTNAME, delimiter=';', comment=comment, header=0)
+    try : 
+        Data=pd.read_csv(INPUTNAME, delimiter=';', comment=comment, header=0)
+    except : 
+        Data=pd.read_csv(INPUTNAME, delimiter=';', comment=comment, header=0, encoding='latin-1')
         
     Liste =     Data.Nom_fichier.tolist()
     Legende =   Data.Legende.tolist()
@@ -1755,6 +1767,209 @@ def readinput_RIXS(INPUTNAME='input.csv'):
         pass
 
     return(Liste, Legende, Liste_ref, Seuil, Correction, optplt, Liste_corr, TITRE, POSEcoupe)
+
+#%% XRF
+
+
+def Corr2Str_XRF(Correction_number):
+    '''
+    Cette fonction sert à donner l'extension d'un fichier en fonction de la correction demandé
+
+    Parameters
+    ----------
+    Correction_number : TYPE
+        DESCRIPTION.
+
+    Raises
+    ------
+    ValueError
+        DESCRIPTION.
+
+    Returns
+    -------
+        Nom de la correction
+
+    '''
+   
+    if Correction_number == 1:
+        Correction_NAME='pasimplemnter'
+        
+    else :
+        raise ValueError("Pb la correction n'existe pas")
+    
+    return(Correction_NAME)
+
+
+    
+def Chemin2input_XRF(TITRE, CLEFDETRIE='', CHEMIN='.',LISTEDOSSIER=['Data_trait'],mode='RPE',correction=1):
+    '''
+    Cette fonction sert à créer un ficher d'input contenant le chemin relatif
+    vers les fichiers matchant avec la clef de trie et étant dans les dossier 
+    dans la liste LISTEDOSSIER
+    
+    Parameters
+    ----------
+    TITRE : string
+        Titre.
+    CLEFDETRIE : string, optional
+        Chaine de caractère pour le trie, si vide le trie s'effectuer via le titre. The default is ''.
+    CHEMIN : TYPE, optional
+        DESCRIPTION. The default is '.'.
+    LISTEDOSSIER : tab de string, optional
+        Tableau des différents dossier à visiter. The default is ['Data_trait'].
+    mode : string, optional
+        choix du mode, PERKIN, portable, RPE, RAMAN ou ID20. The default is 'portable'.
+    correction : TYPE, optional
+        valeur de remplissage de la case correction. The default is '0'.
+    
+    Returns
+    -------
+    None.
+    
+    '''
+
+    if CLEFDETRIE== '' : 
+        CLEFDETRIE = '*'+TITRE+'*'
+        
+    Liste       =[]
+    Liste_ref   =[]
+    Legende     =[]
+    
+    for DOSSIER in LISTEDOSSIER:
+       
+        if mode == 'ELIO':
+            Liste_temp       = list_folder_filter(CLEFDETRIE+'.mca', CHEMIN, DOSSIER);
+            Legende_temp     = [re.sub(".mca", '', x) for x in Liste_temp]
+            Correction       = correction
+            Liste_Gain_temp, Liste_Frequence_temp, Liste_Puissance_temp, Liste_Amplitude_Mod_temp, Liste_Nb_scan_temp = Releve_parametre(CLEFDETRIE ,CHEMIN, DOSSIER)
+        
+            Liste     = Liste     + ['.'+os.sep + DOSSIER + os.sep + x for x in Liste_temp]
+            Liste_ref = Liste_ref + ['' for x in Liste_temp]
+            Legende   = Legende   + Legende_temp
+            
+       
+
+        elif mode == 'fityk' :
+            Liste_temp       = list_folder_filter(CLEFDETRIE+'.dat', CHEMIN, DOSSIER);
+            Legende_temp     = [re.sub(".dat", '', x) for x in Liste_temp]
+            Correction       = correction
+        
+            Liste     = Liste     + ['.'+os.sep + DOSSIER + os.sep + x for x in Liste_temp]
+            Liste_ref = Liste_ref + ['' for x in Liste_temp]
+            Legende   = Legende   + Legende_temp
+            
+
+    taille=np.size(Liste)
+    df = pd.DataFrame(dict(
+                    Nom_fichier   = Liste,
+                    Legende       = Legende,
+                    Nom_ref       = Liste_ref,
+                    Correction    = np.ones(taille)*Correction,
+                    Matplot_opt   = mono2tab('', taille),
+                    Calibration   = mono2tab('', taille),
+                    LimiteInf     = mono2tab('', taille),
+                    LimiteSup     = mono2tab('', taille)))
+
+    SAVE=df.to_csv(sep=';', index=False);
+    
+    print(SAVE)
+    
+    text_file = open('input_'+TITRE+'.csv', "w")
+
+    text_file.write(SAVE)
+    
+    text_file.close()
+    
+def readinput_XRF(INPUTNAME='input.csv'):
+    '''
+    Cette fonction sert à lire les inputs de traitements et d'affichage des spectres'
+
+    Parameters
+    ----------
+    INPUTNAME : TYPE, optional
+        Nom du fichier d'input. The default is 'input.csv'.
+    mode : TYPE, optional
+        numpy ou pandas. The default is 'numpy'.
+    concentrationinput : TYPE, optional
+       
+
+    Returns
+    -------
+    None.
+
+    '''
+    
+    TITRE = INPUTNAME[6:-4]
+    
+    Data=pd.read_csv(INPUTNAME, delimiter=';', comment='#', header=0)
+    Liste =     Data.Nom_fichier.tolist()
+    Legende =   Data.Legende.tolist()
+    Liste_ref = Data.Nom_ref.tolist() # Chemin de la référence, si vide le fichier à déja été traiter
+    
+    
+    try:
+        Correction = Data.Correction.tolist()  
+    except AttributeError:
+        Correction = np.zeros(np.size(Liste))
+    
+    try:        optplt = Data.Matplot_opt.to_numpy(dtype='str')
+    except:     optplt=''
+    
+    try :       LimiteInf = Data.LimiteSup.to_list()
+    except :    LimiteInf = -np.inf
+    
+    try :       LimiteSup = Data.LimiteInf.to_list()
+    except :    LimiteSup = np.inf
+        
+    
+    
+    Limite = np.zeros((np.size(Liste), 2)) # Créaction de la matrice limite
+    LimiteInf = mono2tab(LimiteInf, np.size(Liste))
+    LimiteSup = mono2tab(LimiteSup, np.size(Liste))
+    
+    
+    for i, lim in enumerate(LimiteInf): # on parcous la liste pour mettre les trucs au bon endroit
+
+        if LimiteInf[i] == '':
+            Limite[i, 0] = -np.inf
+        else :
+            try : 
+                Limite[i, 0]=LimiteInf[i]
+            except :
+                Limite[i, 0]=LimiteInf[i][0]
+        
+        if LimiteSup[i] == '' :
+            Limite[i, 1]= np.inf
+        else :
+            try :
+                Limite[i, 1]=LimiteSup[i]
+            except :
+                Limite[i, 1]=LimiteSup[i][0]
+    
+    
+        
+    try : # Récupération de la liste des fichier traité si applicable
+        Liste_temp=copy(Liste);
+        for i in np.arange(0, np.size(Liste), 1):
+            if Correction[i] != 0:
+                try:
+                    (cheminfichier, nomfichier) = os.path.split(Liste[i])
+                    DOSSIER = 'Data_corr'
+                    Liste_temp[i]=DOSSIER+os.sep+nomfichier[:-4]+Corr2Str_RPE(Correction[i])
+                except IndexError:
+                    warnings.warn('\nLe dossier '+DOSSIER+' est vide ou il y a trop de fichier par rapport au fichier d\'input\n')
+            else:
+                    Liste_temp[i]=Liste[i]            
+    
+        Liste_corr=np.array(Liste_temp);
+    except FileNotFoundError:
+        pass
+    
+    
+    
+    return(Liste, Legende, Liste_ref, Correction, optplt, Limite, TITRE)
+    
+
 
 
 #%% Boite de dialogue 

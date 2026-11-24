@@ -122,7 +122,7 @@ def GRAPHOUT_mode(number):
     elif number == 5 :
         # FIGSIZE=[7, 4.5]
         FIGSIZE=[5, 3.5]
-        DPI = 200
+        DPI = 300
 
     elif number == 6 :
         FIGSIZE=[7, 3.5]
@@ -275,7 +275,7 @@ def SecondAxe_g(ax1, Langue='anglais', GRAPHOUT=None, unite = 'nm'):
     secax = ax1.secondary_xaxis('top', functions=(mT2g, mT2g))
  
     if Langue == 'anglais' : 
-        secax.set_xlabel('Wavelenght (µm)')
+        secax.set_xlabel('Landé g-factor')
     else : 
         secax.set_xlabel("Facteur de Landé effectif g")
      
@@ -319,14 +319,14 @@ def SecondAxe_nm(ax1, Langue='anglais', GRAPHOUT=None, unite = 'nm'):
        minortickman = np.arange(20, 1000, 20)
        
        if GRAPHOUT in [1, 6] :
-           majortickman = [2000, 1500, 1000, 800, 700, 600, 500, 400, 333, 300, 200]
+           majortickman = [2500, 1500, 1000, 800, 700, 600, 500, 400, 333, 300, 200]
        else :
            majortickman = [2000, 1000, 800, 700, 600, 500, 400, 333, 300, 200]
     
        secax = ax1.secondary_xaxis('top', functions=(nm2cm1, nm2cm1))
        
        if Langue == 'anglais' : 
-            secax.set_xlabel('Wavelenght (nm)')
+            secax.set_xlabel('Wavelength (nm)')
        else : 
             secax.set_xlabel("Longueur d'onde (nm)")
     
@@ -432,9 +432,9 @@ def Add_checkbutton(line_liste, fig=None, ax=None):
         ax=rax,
         labels=lines_by_label.keys(),
         actives=[l.get_visible() for l in lines_by_label.values()],
-        # label_props={'color': line_colors},
-        # frame_props={'edgecolor': line_colors},
-        # check_props={'facecolor': line_colors},
+        label_props={'color': line_colors},
+        frame_props={'edgecolor': line_colors},
+        check_props={'facecolor': line_colors},
     )
     def callback(label):
         # nonlocal figclic
@@ -457,7 +457,7 @@ def ModeX_select(X, ModeX, ax1, valeurnormX, Langue = 'Anglais',  RAJOUT='') :
         
     elif ModeX == 'nm':
         if Langue == 'anglais' :
-            ax1.set_xlabel("Wavelenght ($nm$)");
+            ax1.set_xlabel("Wavelength ($nm$)");
         else :
             ax1.set_xlabel("Longueur d'onde ($nm$)");
         RAJOUT = RAJOUT + '_nm';
@@ -491,7 +491,9 @@ def ModeX_select(X, ModeX, ax1, valeurnormX, Langue = 'Anglais',  RAJOUT='') :
     
     elif ModeX == 'mT_norm':
         # X = (6.626e-34*valeurnormX*1e9)/(9.274e-24*X*1e-4)
-        X = (valeurnormX/9.5) * 1/10 * X
+        X = 714.4775 * valeurnormX / X # passage de gauss à g : https://bpb-us-e1.wpmucdn.com/blogs.roosevelt.edu/dist/9/52/files/2021/03/Numbers_Useful_in_EPR-1.pdf
+        X = (714.4775 * 9.5) / X  * 1/10 # passage de g à mT.
+        # X = (valeurnormX/9.5) * 1/10 * X
         
         if Langue == 'anglais' :
             ax1.set_xlabel("Magnetic field (mT)");
@@ -515,12 +517,21 @@ def ModeY_select(X, Y, ModeY, ax1,  Langue = 'Anglais', valeurnorm='1', RAJOUT='
         else : 
               ax1.set_ylabel('Absorbance')
         RAJOUT=RAJOUT+'_ABS'
+        
     
     elif ModeY == 'Int' :
         if Langue == 'anglais' :
               ax1.set_ylabel('Intensity (u.a)')
         else : 
               ax1.set_ylabel('Intensité (u.a)')
+        RAJOUT=RAJOUT+'_Intens'
+        
+    elif ModeY == 'LogInt' :
+        Y = np.log(Y)
+        if Langue == 'anglais' :
+              ax1.set_ylabel('log(Intensity) (u.a)')
+        else : 
+              ax1.set_ylabel('log(Intensité) (u.a)')
         RAJOUT=RAJOUT+'_Intens'
     
     elif ModeY == 'Coup' :
@@ -548,7 +559,7 @@ def ModeY_select(X, Y, ModeY, ax1,  Langue = 'Anglais', valeurnorm='1', RAJOUT='
         
     elif ModeY == 'Kubelka':
         Y = (1-Y)**2/(2*Y);
-        ax1.set_ylabel('Approxiation Kubelka-Munk (u.A)')
+        ax1.set_ylabel('Approximation Kubelka-Munk (u.A)')
         RAJOUT = RAJOUT + '_Reflexion'
    
     elif ModeY == 'ABSnormep':
@@ -668,7 +679,12 @@ def ReadData_spectrotype(Fichier, spectromode='', AdditionY=0, ModeX='cm', ModeY
         try : X, Y = Readspectre(Fichier)
         except IndexError:
             try : X, Y = Readspectre(Fichier, delimiter='\t')
-            except IndexError : X, Y = Readspectre(Fichier, delimiter=',')
+            except IndexError :
+                try :
+                    X, Y = Readspectre(Fichier, delimiter=',')
+                except :
+                    X, Y = Readspectre(Fichier, delimiter='\t', skip_header=16)
+            
         
         
         Y = Y + AdditionY
@@ -680,11 +696,15 @@ def ReadData_spectrotype(Fichier, spectromode='', AdditionY=0, ModeX='cm', ModeY
             X = eV2nm(X)
             Limite = eV2nm(Limite)
             
-        if not (ModeY == 'Tr' or ModeY == 'Kubelka') : Y = -np.log10(Y);
+        if not (ModeY == 'Tr' or ModeY == 'Kubelka') : Y = -np.log10(Y); # Passage en ABS
         
     elif spectromode == 'RAMAN':
         try : X, Y = Readspectre(Fichier, delimiter='\t')
-        except IndexError: X, Y = Readspectre(Fichier, delimiter=' ')
+        except IndexError:
+            try : X, Y = Readspectre(Fichier, delimiter=' ')
+            except IndexError : X, Y = Readspectre(Fichier)
+    
+        if (ModeY == 'ABS') : Y = -np.log10(Y); # Passage en ABS
     
     elif spectromode == 'RPE':
         try : X, Y = Readspectre(Fichier,skip_header=3, delimiter='\t')
@@ -717,6 +737,17 @@ def ReadData_spectrotype(Fichier, spectromode='', AdditionY=0, ModeX='cm', ModeY
         elif ModeX == 'eV':
             X = eV2nm(X)
             Limite = eV2nm(Limite)
+            
+    elif spectromode == 'XRF' :
+        df = pd.read_csv(Fichier, delimiter=',', header=None,
+                skiprows=17, usecols = [0])
+        X = df.index.to_numpy()
+        ParaconvXRF = [-0.1624, 0.010700452, 6.1644902e-07] # Para A, B, C extrait de pymca
+        X = X**2*ParaconvXRF[2] + X*ParaconvXRF[1] + ParaconvXRF[0]
+        Y = df.iloc[:, 0].to_numpy()
+        pass
+    
+    
     else :
         print('\n\n LECTURE PAR DEFAUT \n\n')
         try : X, Y = Readspectre(Fichier, delimiter='\t')
@@ -879,7 +910,10 @@ def Affichage_spectre(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0,
     else:
         ax1.set_xlim(Xlim);
         if Ylim : ax1.set_ylim(Ylim);
-    
+        else : 
+            ax1.relim()                                 # recalcule les limites des données
+            ax1.autoscale_view(scalex=False, scaley=True, tight=True)
+
     
     for i in np.arange(0, np.size(Liste)): # on lit tous les fichier
     
@@ -890,8 +924,11 @@ def Affichage_spectre(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0,
                                     AdditionY=AdditionY[i], ModeX=ModeX, ModeY = ModeY, Limite=LimiteAff[i])
         
         if Lissage :
-            Y = savgol_filter(Y, 51, 3)
-            plt.title('ATTENTION ! Lissage!')
+            print("ATTENTION LISSAGE")
+            try : Y = savgol_filter(Y, Lissage, 3)
+            except : Y = savgol_filter(Y, 7, 3)
+
+            ax1.set_title('ATTENTION ! Lissage!')
             RAJOUT = RAJOUT + '_lisser'
             
         X, RAJOUT = ModeX_select(X, ModeX, ax1, valeurnormX[i], Langue)
@@ -910,7 +947,7 @@ def Affichage_spectre(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0,
                 Y = Y-np.nanmin(Y[INDEXsousmin])
                 
             else : Y = Y-np.nanmin(Y)
-            plt.title('ATTENTION ! Soustraction minimum !')
+            ax1.set_title('ATTENTION ! Soustraction minimum !')
             RAJOUT = RAJOUT + '_sousmin'
         
         Y = Y + etage;
@@ -950,7 +987,12 @@ def Affichage_spectre(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0,
         except :
             pass
         
-            
+        if spectromode=='OAS' and ModeX == 'nm':
+            try :
+                tauv=transmittance_lumineuse(X,Y)
+                print("Pour le verre " + Legende[i] + " la transmittance lumineuse est de " + f'{tauv:.2f}')
+            except : pass
+        
             
             
         ################# OPTION CON 1 : deux echelle différente ##############################
@@ -1053,7 +1095,7 @@ def Affichage_spectre(Liste, Legende, Autoaxe=True, Xlim=[4000, 35000], Ylim=[0,
     def on_resize(event):
         fig.tight_layout()
         fig.canvas.draw()
-        
+    
     if newgraph : fig.canvas.mpl_connect('resize_event', on_resize)
     else : fig = plt.gcf()
 
@@ -1108,6 +1150,44 @@ def Affichage_gauss(Liste, Legende, TITRE, SHOW=True, optplt='--') :
 
 #%% Colorimetrie
 
+def transmittance_lumineuse(X, Y):
+    """
+    Transmittance lumineuse selon ISO 9050 / EN 410.
+    X : longueurs d'onde en nm
+    Y : transmittance entre 0 et 1
+    """
+
+    X = np.asarray(X, dtype=float)
+    Y = np.asarray(Y, dtype=float)
+
+    # Domaine normalisé
+    shape = colour.SpectralShape(380, 780, 1)
+
+    # Spectre du verre
+    T = colour.SpectralDistribution(dict(zip(X, Y)))
+    T = T.copy().align(shape)
+
+    # Illuminant D65
+    D65 = colour.SDS_ILLUMINANTS["D65"].copy().align(shape)
+
+    # Efficacité lumineuse photopique V(lambda)
+    V = colour.colorimetry.SDS_LEFS_PHOTOPIC[
+        "CIE 1924 Photopic Standard Observer"
+    ].copy().align(shape)
+
+    wavelengths = shape.wavelengths
+
+    tau_v = np.trapezoid(
+        D65.values * T.values * V.values,
+        wavelengths
+    ) / np.trapezoid(
+        D65.values * V.values,
+        wavelengths
+    )
+
+
+    return tau_v
+
 def Calcul_XYZ(Liste, Legende):
     '''
     Parameters
@@ -1137,8 +1217,12 @@ def Calcul_XYZ(Liste, Legende):
         
         Data_dict={}
         for compteur in range(np.size(nm)): Data_dict[nm[compteur]] = Tsample[compteur] # Mise des données sous forme de dictionnaire pour utilisation avec le module Colour
-
-        sd = colour.SpectralDistribution(Data_dict, name=Legende[i]) # Créaction de l'objet densité spectral sample
+        
+        try :
+            sd = colour.SpectralDistribution(Data_dict, name=Legende[i]) # Créaction de l'objet densité spectral sample
+        except AssertionError :
+            sd = colour.SpectralDistribution(Data_dict)
+            
         cmfs = colour.colorimetry.MSDS_CMFS_STANDARD_OBSERVER['CIE 1931 2 Degree Standard Observer'] # Réfence pour le calcul tu trimultus
         illuminant = colour.SDS_ILLUMINANTS['D65']
         
@@ -1207,8 +1291,20 @@ def AffichageCIE1931(Liste, Legende, TITRE='CIE1931', Marqueur='', Fleche=True,
     tristimulus=Calcul_XYZ(Liste, Legende)
     saveDATACIE_XYZ(TITRE[:-8], Legende, tristimulus[:, 0], tristimulus[:, 1],
                     tristimulus[:, 2])
-    
+    kwarg = {}
     for i in np.arange(0, np.size(Liste)):
+        
+        try :
+            np.isnan(Legende[i])
+            Legende[i]=''
+        except : pass
+        
+        if Legende[i] == '' or Legende[i] == 'nan' : # vérification que la légende est vide 
+            kwarg['label'] = None
+        else :
+            kwarg['label'] = Legende[i]
+       
+        
         XYZ=tristimulus[i]
         #print(XYZ)
         #RGB = colour.XYZ_to_sRGB(XYZ / 100) # Passage en RGB.
@@ -1216,11 +1312,17 @@ def AffichageCIE1931(Liste, Legende, TITRE='CIE1931', Marqueur='', Fleche=True,
         xtable.append(x)
         ytable.append(y)
         #cplot.plot_single_colour_swatch(cplot.ColourSwatch('Sample', RGB), text_parameters={'size': 'x-large'}) # Afficage de la couleur RGB
-    
-        if Marqueur[i]:
+        
+        try :
+            testrandom = np.isnan(Marqueur[0])
+        except : 
+            testrandom = False
+            
+        # if Marqueur[i] and not (np.isnan(Marqueur[0])):
+        if Marqueur[i] and not (testrandom):            
             #plt.plot(x, y, marker=Marqueur[i], color='white', label=Legende[i])
             #plt.plot(x, y, marker=Marqueur[i], label=Legende[i])
-            plt.plot(x, y, Marqueur[i], label=Legende[i])
+            plt.plot(x, y, Marqueur[i], **kwarg)
         elif Fleche:
         #Plotting the *CIE xy* chromaticity coordinates.
             plt.plot(x, y, 'x', color='white')
@@ -1232,7 +1334,7 @@ def AffichageCIE1931(Liste, Legende, TITRE='CIE1931', Marqueur='', Fleche=True,
                             arrowprops=dict(arrowstyle='->', connectionstyle='arc3, rad=-0.2'))
             
         else :
-                plt.plot(x, y, 'x', label=Legende[i])
+                plt.plot(x, y, 'x', **kwarg)
         
     plt.legend()
 
@@ -1300,7 +1402,13 @@ def Affichage_Lab2D(Liste, Legende, TITRE='Lab', Marqueur='', SHOW=True,
         Lab=colour.XYZ_to_Lab(XYZ);
         Lab_liste.append(Lab)
         
-        if Marqueur[i]:
+        try : # Sinon Pb si on met un string dans le marqueur
+            testrandom = np.isnan(Marqueur[0]) 
+        except : 
+            testrandom = False
+        
+        # if Marqueur[i] and not (np.isnan(Marqueur[i])):
+        if Marqueur[i] and not (testrandom):
             ax1.plot(Lab[1], Lab[0], Marqueur[i], label=Legende[i])
             ax2.plot(Lab[1], Lab[2], Marqueur[i], label=Legende[i])
         else:
@@ -1378,8 +1486,14 @@ def Affichage_Lab3D(Liste, Legende, TITRE='Lab3D', Marqueur='', SHOW=True,
         a=Lab[1]
         b=Lab[2]
         
-               
-        if Marqueur[i] == '' :            
+        try : # Sinon Pb si on met un string dans le marqueur
+            testrandom = np.isnan(Marqueur[0]) 
+        except : 
+            testrandom = False
+        
+        # if Marqueur[i] and not (np.isnan(Marqueur[i])):
+        if Marqueur[i] and not (testrandom):
+        # if Marqueur[i] == '' :            
             ax.scatter(a, b, L, marker='x', label=Legende[i])
         else:
             ax.plot(a, b, L, Marqueur[i], label=Legende[i])
@@ -1649,6 +1763,9 @@ def wavelength_to_rgb(wavelength, gamma=0.8):
         B = 0.0
     return (R,G,B,A)
 
+
+
+
 #%% ID 20
 def Affichage_ID20(Liste, Legende, Autoaxe=True, Xlim=[0, 800], Ylim=[0, 1],
                   TITRE='superposition', linewidth=1.5, Modeaff='default',
@@ -1867,17 +1984,16 @@ def element2epsilon(Element):
         # dfCo.loc['', 'epsilon'] = np.nan
         # dfCo.loc['', 'coordinence'] = 5
         
-        dfCo.loc['T1(5)', 'Xlim'] = [8146.417445, 10358.25545]
-        dfCo.loc['T1(5)', 'epsilon'] = 8 #Lecture graphique p139 NS2 
-        dfCo.loc['T1(5)', 'coordinence'] = 5
+        # Coordinance 5
         
-        # dfCo.loc['T2(5)', 'Xlim'] = [15000, 17180.68536]
-        # dfCo.loc['T2(5)', 'epsilon'] = np.nan
-        # dfCo.loc['T2(5)', 'coordinence'] = 5
+        # dfCo.loc['T1(5)', 'Xlim'] = [8146.417445, 10358.25545]
+        # dfCo.loc['T1(5)', 'epsilon'] = 8 #Lecture graphique p139 NS2 
+        # dfCo.loc['T1(5)', 'coordinence'] = 5
         
-        dfCo.loc['T3(5)', 'Xlim'] = [18707.16511, 21012.46106]
-        dfCo.loc['T3(5)', 'epsilon'] = 40 #Lecture graphique p139 NS2 
-        dfCo.loc['T3(5)', 'coordinence'] = 5
+        
+        # dfCo.loc['T3(5)', 'Xlim'] = [18707.16511, 21012.46106]
+        # dfCo.loc['T3(5)', 'epsilon'] = 40 #Lecture graphique p139 NS2 
+        # dfCo.loc['T3(5)', 'coordinence'] = 5
         
         custom_cmap = mcolors.LinearSegmentedColormap.from_list('custom', ['#FFFFFF', '#173f87'])
         
@@ -2158,7 +2274,91 @@ def element2epsilon(Element):
         
         df=dfNitpb
 
+    elif Element == 'Cr3+' : #Villain et al. 2010 NS3
+            dfCr3=pd.DataFrame(columns = ['Xlim', 'epsilon', 'coordinence'],
+                               index=['4A2g->4T2g', '4A1g->4T1g'])
+            
+            dfCr3.loc['4A2g->4T2g', 'Xlim'] = [12680, 18020] #"interference dips result from spin–orbit coupling between the sharp states 2Eg and 2T1g and the broad state 4T2g"
+            dfCr3.loc['4A2g->4T2g', 'epsilon'] = 18 
+            dfCr3.loc['4A2g->4T2g', 'coordinence'] = 6 ##Oh regulier
+            
+            dfCr3.loc['4A1g->4T1g', 'Xlim'] = [19300, 24700]
+            dfCr3.loc['4A1g->4T1g', 'epsilon'] = 18 
+            dfCr3.loc['4A1g->4T1g', 'coordinence'] = 6 ##Oh regulier
+            
+            #Creation of the colormap
+            custom_cmap = mcolors.LinearSegmentedColormap.from_list('custom', ['#FFFFFF', '#AAFF00'])
+            
+            norm = matplotlib.colors.Normalize(vmin=0, vmax=dfCr3['epsilon'].max())
+            cmap = matplotlib.cm.ScalarMappable(norm=norm, cmap=custom_cmap)
+    
+            dfCr3['cmap'] = cmap
+            dfCr3['name'] = '$Cr^{3+}$'
+            
+            df=dfCr3
+            
+    elif Element == 'SiStretch' : 
+            dfSiS=pd.DataFrame(columns = ['Xlim', 'epsilon', 'coordinence'],
+                               index=['stretching'])
+            
+            dfSiS.loc['stretching', 'Xlim'] = [900, 1250] 
+            dfSiS.loc['stretching', 'epsilon'] = 1 
+            dfSiS.loc['stretching', 'coordinence'] = 1 ##Oh regulier
+            
 
+            #Creation of the colormap
+            custom_cmap = mcolors.LinearSegmentedColormap.from_list('custom', ['#FFFFFF', '#EDD6B7'])
+            
+            norm = matplotlib.colors.Normalize(vmin=0, vmax=dfSiS['epsilon'].max())
+            cmap = matplotlib.cm.ScalarMappable(norm=norm, cmap=custom_cmap)
+    
+            dfSiS['cmap'] = cmap
+            dfSiS['name'] = 'Si-O stretching'
+            
+            df=dfSiS
+            
+    elif Element == 'Sibending' : 
+            dfSiS=pd.DataFrame(columns = ['Xlim', 'epsilon', 'coordinence'],
+                               index=['bending'])
+            
+            dfSiS.loc['bending', 'Xlim'] = [500, 800] #"interference dips result from spin–orbit coupling between the sharp states 2Eg and 2T1g and the broad state 4T2g"
+            dfSiS.loc['bending', 'epsilon'] = 1 
+            dfSiS.loc['bending', 'coordinence'] = 1 ##Oh regulier
+            
+
+            #Creation of the colormap
+            custom_cmap = mcolors.LinearSegmentedColormap.from_list('custom', ['#FFFFFF', '#EDD6B7'])
+            
+            norm = matplotlib.colors.Normalize(vmin=0, vmax=dfSiS['epsilon'].max())
+            cmap = matplotlib.cm.ScalarMappable(norm=norm, cmap=custom_cmap)
+    
+            dfSiS['cmap'] = cmap
+            dfSiS['name'] = 'Si-O-Si bending'
+            
+            df=dfSiS
+            
+    elif Element == 'Postretching' : 
+            dfPoS=pd.DataFrame(columns = ['Xlim', 'epsilon', 'coordinence'],
+                               index=['stretching'])
+            
+            dfPoS.loc['stretching', 'Xlim'] = [920, 975] #"interference dips result from spin–orbit coupling between the sharp states 2Eg and 2T1g and the broad state 4T2g"
+            dfPoS.loc['stretching', 'epsilon'] = 1 
+            dfPoS.loc['stretching', 'coordinence'] = 1 ##Oh regulier
+            
+
+            #Creation of the colormap
+            custom_cmap = mcolors.LinearSegmentedColormap.from_list('custom', ['#FFFFFF', '#FE9A37'])
+            
+            norm = matplotlib.colors.Normalize(vmin=0, vmax=dfPoS['epsilon'].max())
+            cmap = matplotlib.cm.ScalarMappable(norm=norm, cmap=custom_cmap)
+    
+            dfPoS['cmap'] = cmap
+            dfPoS['name'] = 'P-O stretching'
+            
+            df=dfPoS
+            
+
+            
     return(df)
 
 def read_annot(Listeannot):
@@ -2231,8 +2431,17 @@ def OAS_annotate (X,Y, Listeannot='', ax=None, mode='cm', lissage=True, Annot_ty
                       xytext=(10, 20))
             
         elif Element == 'Mn3+':
-            
+        
             annot_max(X, Y, '$Mn^{3+}$', ax, xlim=Limite.iloc[0,0])
+            
+        elif Element == 'Cr3+' :
+                    Limite=element2epsilon(Element)
+                    
+                    annot_max(X, Y, '$Cr^{3+}$', ax, xlim=Limite.iloc[0, 0],
+                              xytext=(-10, 30))
+            
+                    annot_max(X, Y, '$Cr^{3+}$', ax, xlim=Limite.iloc[1, 0],
+                              xytext=(10, 40))            
      
         else :
             pass
@@ -2359,9 +2568,12 @@ def zoom_effect02(ax1, ax2, **kwargs):
 
 #%% Big data
 
-
-from scipy.cluster.hierarchy import dendrogram, linkage
-from sklearn.decomposition import PCA
+try : 
+    from scipy.cluster.hierarchy import dendrogram, linkage
+    from sklearn.decomposition import PCA
+except ModuleNotFoundError :
+    print("sklean pas installer, impossible de faire de la grosse donnée")
+    
 
 
 def Liste2PCA(Liste, Legende, Xmin=330, Xmax=2500, spectro='OAS'):

@@ -1528,10 +1528,20 @@ def Nettoyage_spectre_OAS(Liste, Legende, Liste_ref, correction, Liste_refN='',
                 Y_corr= correction_saut_detect(X, Y_corr, Legende[i], mode='PERKIN_lampe')
                 Fichier_corr=nomfichier[0:-4] + Corr2Str_OAS(correction[i])
             
+            elif(correction[i] == 1134) :
+                # Xnm_ref, Ytr_ref=Readspectre(Liste_ref[i])
+                # I100 = -np.log10(Ytr_ref)
+                # Y=Y-I100
+                
+                Y_corr= correction_saut_detect(X, Y, Legende[i], mode='PERKIN_std')
+                Y_corr= correction_saut_detect(X, Y_corr, Legende[i], mode='PERKIN_lampe')
+                Y_corr= correction_saut_detect(X, Y_corr, Legende[i], mode='PERKIN_filtre_319')
+                Fichier_corr=nomfichier[0:-4] + Corr2Str_OAS(correction[i])
+
             elif(correction[i] == 1234) :
-                Xnm_ref, Ytr_ref=Readspectre(Liste_ref[i])
-                I100 = -np.log10(Ytr_ref)
-                Y=Y-I100
+                # Xnm_ref, Ytr_ref=Readspectre(Liste_ref[i])
+                # I100 = -np.log10(Ytr_ref)
+                # Y=Y-I100
                 
                 Y_corr= correction_saut_detect(X, Y, Legende[i], mode='PERKIN_micro')
                 Y_corr= correction_saut_detect(X, Y_corr, Legende[i], mode='PERKIN_lampe')
@@ -1549,7 +1559,7 @@ def Nettoyage_spectre_OAS(Liste, Legende, Liste_ref, correction, Liste_refN='',
                 X, Y_corr = removeInfNan(X, Y_corr)
                 
                 Xsave=1/(X*1E-7);                
-                Fichier_corr=nomfichier[0:-4] + Corr2Str_OAS(correction[i])
+                Fichier_corr=nomfichier[0:-4] + str(i) + Corr2Str_OAS(correction[i])
                 Fichier_corr= Legende[i]+'_diff.csv'
             
             elif(correction[i] == 21): # Soustration normalisé
@@ -1614,7 +1624,6 @@ def Nettoyage_spectre_OAS(Liste, Legende, Liste_ref, correction, Liste_refN='',
                 Fichier_corr=nomfichier[0:-4] + Corr2Str_OAS(correction[i])  
                        
                 
-                
             elif(correction[i] == 3): #Lissage
   
                  Xsave, Y_corr= lissage (X, Y, Legende[i])
@@ -1634,12 +1643,16 @@ def Nettoyage_spectre_OAS(Liste, Legende, Liste_ref, correction, Liste_refN='',
                 Fichier_corr=nomfichier[0:-4] + Corr2Str_OAS(correction[i])    
             
 
-
             elif(correction[i]==5): # passe en Tr, si Ttr en abosrbance il sera remis en %T lors de la sauv
                 Y_corr  = Ytr
                 Fichier_corr=nomfichier[0:-4] + Corr2Str_OAS(correction[i])
-                Dossier = Corr2folder_OAS(correction[i])  
+                Dossier = Corr2folder_OAS(correction[i])
                 
+            elif(correction[i]==51): # passe en cm-1 en nm, 
+                Xsave = X #Puuisqu'ici le X est en nm (cm-1 au depart)
+                Y_corr  = - np.log10(Ytr*100+Addition_Tr[i])
+                Fichier_corr=nomfichier
+                    
             elif(correction[i] == 6): # Spectro portable, pour le raccord bien penser à mettre le spectre IR dans la Liste et le VIS dans la ref   
                 Dossier = Corr2folder_OAS(correction[i])      
                 Xnm, Y_corr=Traitement_spectro_portable(Liste_ref[i], Liste[i],
